@@ -1,0 +1,359 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <title>Project</title>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, user-scalable=no, minimum-scale=1.0, maximum-scale=1.0">
+
+  <!-- Compiled and minified CSS -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/materialize/1.0.0/css/materialize.min.css">
+
+  <!-- Compiled and minified JavaScript -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/materialize/1.0.0/js/materialize.min.js"></script>
+  <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+</head>
+
+
+<body>
+
+
+  <div class="fixed-action-btn">
+    <a class="btn-floating btn-large red" id="fab_main">
+      <i class="large material-icons" id="fab_main_icon">play_arrow</i>
+    </a>
+    <ul>
+      <li><a class="btn-floating red" id="fab_secondary"><i class="material-icons"
+            id="fab_secondary_icon">gamepad</i></a>
+      </li>
+    </ul>
+  </div>
+
+
+  <script type="module">
+    "using strict";
+    import * as THREE from "https://unpkg.com/three@0.127.0/build/three.module.js";
+    import { OrbitControls } from "https://unpkg.com/three@0.127.0/examples/jsm/controls/OrbitControls.js";
+    import { TransformControls } from "https://unpkg.com/three@0.127.0/examples/jsm/controls/TransformControls.js";
+    import Stats from "https://unpkg.com/three@0.127.0/examples/jsm/libs/stats.module.js";
+    import dat from "https://unpkg.com/three@0.127.0/examples/jsm/libs/dat.gui.module.js";
+
+    class Cannon extends THREE.Mesh {
+      // TODO: add all properties that are going to be editable for the future animation, like resistance, any constants, etc.
+      properties = { dummy: 8 }
+
+      constructor(x = 0, z = 0) {
+        super();
+        this.geometry = new THREE.BoxGeometry(1, 1, 1);
+        this.material = new THREE.MeshBasicMaterial({ color: 111 });
+        this.position.set(x, 0.5, z)
+      }
+    }
+
+
+    class Target extends THREE.Mesh {
+      constructor(x, y, z) {
+        super();
+        this.geometry = new THREE.PlaneGeometry(2, 2, 1);
+        this.material = new THREE.MeshBasicMaterial({ color: 0xff0000, side: THREE.DoubleSide });
+        this.position.set(x, y, z)
+        this.lookAt(0, 0, 0)
+      }
+    }
+
+    // THREEjs variables
+    let scene, renderer, stats, cameraControls, transfControl, gui, modelMenu;
+    let cameras = []; // perspective, top, fron, side
+    const raycaster = new THREE.Raycaster();
+    const mouse = new THREE.Vector2();
+    const state = {
+      references: () => alert(`texture Yokohama 3 by Humus (http://www.humus.name/index.php?page=Textures)`),
+      help: () => alert(`Click on cannons to move or rotate, R key to set rotation mode, T key to set translation mode`),
+      addCannon: () => {
+        add(new Cannon())
+      },
+      objects: [],
+      editMode: true,
+      gameMode: false,
+      selectedObject: null,
+      totalTries: 0,
+      transforming: false,
+    };
+
+
+    const domFabMain = document.getElementById("fab_main")
+    const domFabSecondary = document.getElementById("fab_secondary")
+    const domFabMainIcon = document.getElementById("fab_main_icon")
+    const domFabSecondaryIcon = document.getElementById("fab_secondary_icon")
+
+    domFabMain.onclick = () => {
+      state.editMode = !state.editMode
+      if (!state.editMode) {
+        domFabMainIcon.innerHTML = "stop"
+        transfControl.detach();
+        removeModelMenu();
+        gui.close();
+        console.log(document.getElementById("addCannonbtn"))
+        document.getElementById("addCannonbtn").style.display = "none"
+        // TODO if some variable needs to be initializated for the simulation
+      }
+      else {
+        // TODO if something needs to be stopped/removed/cleaned
+        gui.open();
+        document.getElementById("addCannonbtn").style.display = "block"
+        domFabMainIcon.innerHTML = "play_arrow"
+      }
+    }
+
+    domFabSecondary.onclick = () => {
+      state.gameMode = !state.gameMode;
+      if (!state.gameMode) {
+        // TODO: complete cleanup (?)
+        domFabSecondaryIcon.innerHTML = "gamepad"
+        document.getElementById("addCannonbtn").style.display = "block"
+      } else {
+        domFabSecondaryIcon.innerHTML = "help_outline"
+        document.getElementById("addCannonbtn").style.display = "none"
+        // TODO: add target randomly and set all variables to play
+        // I'm thinking on automatically add the cannon in the origin and disable movement, 
+        // just enable rotation so the player needs to target without moving it
+        state.totalTries = 0
+      }
+    }
+
+    function add(mesh) {
+      scene.add(mesh)
+      state.objects.push(mesh)
+    }
+
+    function remove(mesh) {
+      scene.remove(mesh)
+      state.objects.pop(mesh)
+    }
+
+    function genModelMenu() {
+      modelMenu = gui.addFolder("Selected Cannon options")
+      // TODO: add all properties that are going to be editable for the future animation, like resistance, any constants, etc.
+      let dummyProperty = modelMenu.add(state.selectedObject.properties, "dummy").min(-10).max(10).name("Dummy");
+      modelMenu.open()
+      cleanInputsStyle();
+    }
+
+    function removeModelMenu() {
+      if (modelMenu) {
+        gui.removeFolder(modelMenu);
+        modelMenu = null;
+      }
+    }
+
+    function cleanInputsStyle() {
+      const guiInputs = gui.domElement.getElementsByTagName("input");
+      for (let i = 0; i < guiInputs.length; i++) {
+        guiInputs[i].className = "browser-default"
+      }
+    }
+
+
+    function init() {
+      // RENDERER
+      renderer = new THREE.WebGLRenderer({ antialias: true });
+      renderer.setSize(window.innerWidth, window.innerHeight);
+      renderer.setScissorTest(true);
+      document.body.appendChild(renderer.domElement);
+
+      // Camera configuration
+      let fovy = 60.0;    // Field ov view
+      let aspectRatio = window.innerWidth / window.innerHeight;
+      let nearPlane = 0.1;
+      let farPlane = 10000.0;
+
+      // CAMERA 0 Perspective
+      cameras.push(new THREE.PerspectiveCamera(fovy, aspectRatio, nearPlane, farPlane));
+      cameras[0].lookAt(0, 0, 0);
+      cameras[0].position.set(10, 2, 0);
+      cameraControls = new OrbitControls(cameras[0], renderer.domElement);
+      cameraControls.maxPolarAngle = Math.PI / 2 - 0.02
+
+      // CAMERA 1 Top
+      cameras.push(new THREE.PerspectiveCamera(fovy, aspectRatio, nearPlane, farPlane));
+      cameras[1].position.set(0, 30, 0);
+      cameras[1].lookAt(0, 0, 0);
+      cameras[1].up.set(0, 0, 1);
+
+      // CAMERA 2 Front
+      cameras.push(new THREE.PerspectiveCamera(fovy, aspectRatio, nearPlane, farPlane));
+      cameras[2].position.set(0, 1, 30);
+      cameras[2].lookAt(0, 0, 0);
+      cameras[2].up.set(0, 1, 0);
+
+      // CAMERA 3 Side
+      cameras.push(new THREE.PerspectiveCamera(fovy, aspectRatio, nearPlane, farPlane));
+      cameras[3].position.set(-30, 1, 0);
+      cameras[3].lookAt(0, 0, 0);
+      cameras[3].up.set(0, 1, 0);
+
+
+      // background
+      const path = "textures/bg/";
+      const format = '.jpg';
+      const urls = [
+        path + 'posx' + format, path + 'negx' + format,
+        path + 'posy' + format, path + 'negy' + format,
+        path + 'posz' + format, path + 'negz' + format
+      ];
+      const textureCube = new THREE.CubeTextureLoader().load(urls);
+
+      scene = new THREE.Scene();
+      scene.background = textureCube;
+
+      // stats
+      stats = new Stats();
+      stats.showPanel(0);
+      document.body.appendChild(stats.dom);
+
+      // gui
+      gui = new dat.GUI();
+      gui.add(state, 'references');
+      gui.add(state, 'help');
+      const addCannonbtn = gui.add(state, 'addCannon')
+      addCannonbtn.domElement.parentElement.parentElement.id = "addCannonbtn"
+
+
+      cleanInputsStyle();
+
+
+      // CONTROL TRANSFORM
+      transfControl = new TransformControls(cameras[0], renderer.domElement);
+      transfControl.addEventListener('dragging-changed',
+        function (event) {
+          cameraControls.enabled = !event.value;
+        });
+      transfControl.setMode("translate");
+      transfControl.showX = true
+      transfControl.showY = false
+      transfControl.showZ = true
+      transfControl.addEventListener("mouseDown", e => state.transforming = true)
+      transfControl.addEventListener("mouseUp", e => state.transforming = false)
+      scene.add(transfControl);
+
+
+      // models
+      const plane = new THREE.PlaneGeometry(64, 64);
+      const material = new THREE.MeshBasicMaterial({ color: 0xffff00 });
+      const floor = new THREE.Mesh(plane, material);
+      floor.rotation.x = -0.5 * Math.PI;
+
+      scene.add(floor)
+      scene.add(new Target(2, 2, 0))
+      add(new Cannon()) // this adds the object to the modifiable list
+      renderLoop();
+
+      renderer.domElement.addEventListener('pointerdown', e => {
+        if (!state.editMode) {
+          return;
+        }
+        mouse.x = (e.clientX / renderer.domElement.clientWidth) * 2 - 1;
+        mouse.y = - (e.clientY / renderer.domElement.clientHeight) * 2 + 1;
+
+        raycaster.setFromCamera(mouse, cameras[0]);
+        const intersects = raycaster.intersectObjects(state.objects);
+        if (intersects.length > 0 && state.selectedObject !== intersects[0].object && !state.transforming) {
+          removeModelMenu();
+          state.selectedObject = intersects[0].object
+          transfControl.attach(state.selectedObject)
+          genModelMenu();
+        } else if (intersects.length === 0 && !state.transforming) {
+          state.selectedObject = null
+          transfControl.detach();
+          removeModelMenu();
+        }
+      })
+    }
+
+    function renderLoop() {
+      stats.begin();
+      drawScene(); // DRAW SCENE
+      updateScene();
+      stats.end();
+      stats.update();
+      requestAnimationFrame(renderLoop);
+    }
+
+    function drawScene() {
+      const w = window.innerWidth;
+      const h = window.innerHeight;
+      if (state.editMode) {
+        renderer.setViewport(0, 0, w, h);
+        renderer.setScissor(0, 0, w, h);
+        renderer.render(scene, cameras[0])
+      } else {
+        renderer.setViewport(w / 2, 0, w / 2, h / 2);
+        renderer.setScissor(w / 2, 0, w / 2, h / 2);
+        renderer.render(scene, cameras[0])
+
+        // top
+        renderer.setViewport(0, h / 2, w / 2, h / 2);
+        renderer.setScissor(0, h / 2, w / 2, h / 2);
+        renderer.render(scene, cameras[1])
+
+        // front z -> origin
+        renderer.setViewport(w / 2, h / 2, w / 2, h / 2);
+        renderer.setScissor(w / 2, h / 2, w / 2, h / 2);
+        renderer.render(scene, cameras[2])
+
+        // side x -> origin
+        renderer.setViewport(0, 0, w / 2, h / 2);
+        renderer.setScissor(0, 0, w / 2, h / 2);
+        renderer.render(scene, cameras[3])
+
+      }
+    }
+
+    function updateScene() {
+      if (!state.editMode) {
+        // TODO: animate cannons and other stuff if required
+        // if in gamemode, then calculate if it colides with target, if not after the objet is below y=0 or outside some bounding box, tries+=1 and change mode to editMode
+      }
+    }
+
+    window.addEventListener("resize", () => {
+      const aspect = window.innerWidth / window.innerHeight;
+      cameras.forEach(c => {
+        c.aspect = aspect;
+        c.updateProjectionMatrix()
+      })
+      cameraControls.update();
+      renderer.setSize(window.innerWidth, window.innerHeight);
+    }, false);
+
+    document.addEventListener("DOMContentLoaded", init);
+
+    document.addEventListener('keypress', e => {
+      switch (e.code) {
+        case "KeyR":
+          transfControl.showX = false
+          transfControl.showY = true
+          transfControl.showZ = false
+          transfControl.setMode("rotate")
+          break;
+        case "KeyT":
+          transfControl.showX = true
+          transfControl.showY = false
+          transfControl.showZ = true
+          transfControl.setMode("translate")
+          break;
+      }
+    })
+  </script>
+
+
+  <script>
+    // ALL MATERIALIZE RELATED STUFF
+    document.addEventListener('DOMContentLoaded', function () {
+      var elems = document.querySelectorAll('.fixed-action-btn');
+      var instances = M.FloatingActionButton.init(elems, {});
+    });
+  </script>
+</body>
+
+</html>
