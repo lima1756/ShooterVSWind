@@ -38,9 +38,469 @@
     import Stats from "https://unpkg.com/three@0.127.0/examples/jsm/libs/stats.module.js";
     import dat from "https://unpkg.com/three@0.127.0/examples/jsm/libs/dat.gui.module.js";
 
-    class Cannon extends THREE.Mesh {
+    class Composite extends THREE.Group {
+      constructor() {
+        super();
+        this.matrixModel = new THREE.Matrix4();
+      }
+
+      addWiframeHelper(color = new THREE.Color(0, 0, 0)) {
+        this.wireframeHelper = new THREE.LineSegments(new THREE.WireframeGeometry(this.geometry));
+        this.wireframeHelper.material.color = color;
+        this.add(this.wireframeHelper);
+      }
+
+      addLocalAxes(visible = false) {
+        this.geometry.computeBoundingSphere();
+        this.axes = new THREE.AxesHelper(this.geometry.boundingSphere.radius * 1.5);
+        this.axes.visible = visible;
+        this.add(this.axes);
+      }
+
+      getCentroid() {
+        this.geometry.computeBoundingSphere();
+        return this.geometry.boundingSphere.center;
+      }
+
+      getScale(sx, sy, sz) {
+        let S = new THREE.Matrix4();
+        S.makeScale(sx, sy, sz);
+        return S;
+      }
+
+      getRotationX(theta) {
+        let R = new THREE.Matrix4();
+        R.makeRotationX(theta);
+        return R;
+      }
+
+      getRotationY(theta) {
+        let R = new THREE.Matrix4();
+        R.makeRotationY(theta);
+        return R;
+      }
+
+      getRotationZ(theta) {
+        let R = new THREE.Matrix4();
+        R.makeRotationZ(theta);
+        return R;
+      }
+
+      getRotationXQ(theta, xq, yq, zq) {
+        // M = T2(xq,yq,zq) Rx T1(-xq,-yq,-zq)
+        let T2 = this.getTranslation(xq, yq, zq);
+        let Rx = this.getRotationX(theta);
+        let T1 = this.getTranslation(-xq, -yq, -zq);
+        let M = new THREE.Matrix4();
+        M.multiplyMatrices(T2, Rx);
+        M.multiplyMatrices(M, T1);
+        return M;
+      }
+
+      getRotationYQ(theta, xq, yq, zq) {
+        // M = T2(xq,yq,zq) Ry T1(-xq,-yq,-zq)
+        let T2 = this.getTranslation(xq, yq, zq);
+        let Ry = this.getRotationY(theta);
+        let T1 = this.getTranslation(-xq, -yq, -zq);
+        let M = new THREE.Matrix4();
+        M.multiplyMatrices(T2, Ry);
+        M.multiplyMatrices(M, T1);
+        return M;
+      }
+
+      getRotationZQ(theta, xq, yq, zq) {
+        // M = T2(xq,yq,zq) Rz T1(-xq,-yq,-zq)
+        let T2 = this.getTranslation(xq, yq, zq);
+        let Rz = this.getRotationZ(theta);
+        let T1 = this.getTranslation(-xq, -yq, -zq);
+        let M = new THREE.Matrix4();
+        M.multiplyMatrices(T2, Rz);
+        M.multiplyMatrices(M, T1);
+        return M;
+      }
+
+      getTranslation(tx, ty, tz) {
+        let T = new THREE.Matrix4();
+        T.makeTranslation(tx, ty, tz);
+        return T;
+      }
+
+      addScale(sx, sy, sz) {
+        let S = new THREE.Matrix4();
+        S.makeScale(sx, sy, sz);
+        this.matrixModel.multiply(S);
+        this.setMatrix();
+      }
+
+      addRotationX(theta) {
+        let R = new THREE.Matrix4();
+        R.makeRotationX(theta);
+        this.matrixModel.multiply(R);
+        this.setMatrix();
+      }
+
+      addRotationY(theta) {
+        let R = new THREE.Matrix4();
+        R.makeRotationY(theta);
+        this.matrixModel.multiply(R);
+        this.setMatrix();
+      }
+
+      addRotationZ(theta) {
+        let R = new THREE.Matrix4();
+        R.makeRotationZ(theta);
+        this.matrixModel.multiply(R);
+        this.setMatrix();
+      }
+
+      addRotationXQ(theta, xq, yq, zq) {
+        this.addTranslation(xq, yq, zq);
+        this.addRotationX(theta);
+        this.addTranslation(-xq, -yq, -zq);
+        this.setMatrix();
+      }
+
+      addRotationYQ(theta, xq, yq, zq) {
+        this.addTranslation(xq, yq, zq);
+        this.addRotationY(theta);
+        this.addTranslation(-xq, -yq, -zq);
+        this.setMatrix();
+      }
+
+      addRotationZQ(theta, xq, yq, zq) {
+        this.addTranslation(xq, yq, zq);
+        this.addRotationZ(theta);
+        this.addTranslation(-xq, -yq, -zq);
+        this.setMatrix();
+      }
+
+      addTranslation(tx, ty, tz) {
+        let T = new THREE.Matrix4();
+        T.makeTranslation(tx, ty, tz);
+        this.matrixModel.multiply(T);
+        this.setMatrix();
+      }
+
+      animateRotX(theta) {
+        let RX = this.getRotationX(theta);
+        let M = new THREE.Matrix4();
+        M.multiplyMatrices(RX, this.matrixModel);
+        this.setMatrix(M);
+      }
+
+      animateRotY(theta) {
+        let RY = this.getRotationY(theta);
+        let M = new THREE.Matrix4();
+        M.multiplyMatrices(RY, this.matrixModel);
+        this.setMatrix(M);
+      }
+
+      animateRotZ(theta) {
+        let RZ = this.getRotationZ(theta);
+        let M = new THREE.Matrix4();
+        M.multiplyMatrices(RZ, this.matrixModel);
+        this.setMatrix(M);
+      }
+
+      animateRotXQ(theta, xq, yq, zq) {
+        let RXQ = this.getRotationXQ(theta, xq, yq, zq);
+        let M = new THREE.Matrix4();
+        M.multiplyMatrices(RXQ, this.matrixModel);
+        this.setMatrix(M);
+      }
+
+      animateRotYQ(theta, xq, yq, zq) {
+        // M = T(Q) Ry T(-Q)
+        let RYQ = this.getRotationYQ(theta, xq, yq, zq);
+        let M = new THREE.Matrix4();
+        M.multiplyMatrices(RYQ, this.matrixModel);
+        this.setMatrix(M);
+      }
+
+      animateRotZQ(theta, xq, yq, zq) {
+        let RZQ = this.getRotationZQ(theta, xq, yq, zq);
+        let M = new THREE.Matrix4();
+        M.multiplyMatrices(RZQ, this.matrixModel);
+        this.setMatrix(M);
+      }
+
+      setMatrix(matrix = this.matrixModel) {
+        this.matrixAutoUpdate = false;
+        this.matrix.copy(matrix);
+      }
+
+      setMatrixIdentity() {
+        this.matrixAutoUpdate = false;
+        this.matrix.copy(new THREE.Matrix4());
+      }
+
+      // Set matrix with matrixModel
+      resetMatrix() {
+        this.matrixAutoUpdate = false;
+        this.matrix.copy(this.matrixModel);
+      }
+
+    }
+
+    class CannonBarrelFront extends THREE.Mesh {
+      constructor(father) {
+        super();
+        this.father = father;
+        this.geometry = new THREE.CylinderGeometry(0.4, 0.4, 1.5, 64,
+                1, true);
+        const loader = new THREE.TextureLoader();
+        this.material = new THREE.MeshBasicMaterial({
+          map: loader.load('./textures/metal.jpg'),side: THREE.DoubleSide
+        });
+        //this.material = new THREE.MeshBasicMaterial({color: "#485555", side: THREE.DoubleSide});
+        //this.addWiframeHelper(new THREE.Color(0, 0, 0));
+
+      }
+    }
+
+    class CannonBarrelBack extends THREE.Mesh {
+      constructor(father) {
+        super();
+        this.father = father;
+        this.geometry = new THREE.SphereGeometry(0.43, 32, 32);
+        const loader = new THREE.TextureLoader();
+        this.material = new THREE.MeshBasicMaterial({
+          map: loader.load('./textures/metal.jpg'),side: THREE.DoubleSide
+        });
+        //this.material = new THREE.MeshBasicMaterial({color: "#485555", side: THREE.DoubleSide});
+        //this.addWiframeHelper(new THREE.Color(0, 0, 0));
+
+      }
+    }
+
+    class CannonBarrelRing extends THREE.Mesh {
+      constructor(father) {
+        super();
+        this.father = father;
+        this.geometry = new THREE.TorusGeometry(0.4, 0.08, 30, 100);
+        const loader = new THREE.TextureLoader();
+        this.material = new THREE.MeshBasicMaterial({
+          map: loader.load('./textures/metalDetails.jpg'),side: THREE.DoubleSide
+        });
+        //this.material = new THREE.MeshBasicMaterial({color: "#646868", side: THREE.DoubleSide});
+        //this.addWiframeHelper(new THREE.Color(0, 0, 0));
+        this.rotation.x = -Math.PI / 2;
+
+      }
+    }
+
+    class CannonBarrel extends Composite {
+      constructor(father) {
+        super();
+        this.children = [];
+        this.father = father;
+        this.barrelFront = new CannonBarrelFront(father);
+        this.barrelFrontInner = new CannonBarrelFront(father);
+        this.barrelFrontInner.scale.set(.8, 1, .8);
+        this.barrelBack = new CannonBarrelBack(father);
+        this.barrelBack.position.set(0, 0.75, 0);
+        this.barrelBack2 = new CannonBarrelBack(father);
+        this.barrelBack2.position.set(0, 1.15, 0);
+        this.barrelBack2.scale.set(.3, .3, .3);
+        this.barrelRing = new CannonBarrelRing(father);
+        this.barrelRing.position.set(0, -0.75, 0);
+        this.barrelRing1 = new CannonBarrelRing(father);
+        this.barrelRing1.position.set(0, 0.06, 0);
+        this.barrelRing1.scale.set(.9, .9, .5);
+        this.barrelRing2 = new CannonBarrelRing(father);
+        this.barrelRing2.position.set(0, -0.06, 0);
+        this.barrelRing2.scale.set(.9, .9, .5);
+        this.barrelRing3 = new CannonBarrelRing(father);
+        this.barrelRing3.position.set(0, .60, 0);
+        this.barrelRing3.scale.set(.9, .9, .5);
+
+        this.add(this.barrelFront);
+        this.add(this.barrelFrontInner);
+        this.add(this.barrelBack);
+        this.add(this.barrelBack2);
+        this.add(this.barrelRing);
+        this.add(this.barrelRing1);
+        this.add(this.barrelRing2);
+        this.add(this.barrelRing3);
+
+        this.children.push(this.barrelFront);
+        this.children.push(this.barrelFrontInner);
+        this.children.push(this.barrelBack);
+        this.children.push(this.barrelBack2);
+        this.children.push(this.barrelRing);
+        this.children.push(this.barrelRing1);
+        this.children.push(this.barrelRing2);
+        this.children.push(this.barrelRing3);
+        this.position.set(0, 0.35, .4);
+      }
+    }
+
+    class CannonBaseBox extends THREE.Mesh {
+      constructor(father) {
+        super();
+        this.father = father;
+        this.geometry = new THREE.BoxGeometry(1, 1, 1);
+        const loader = new THREE.TextureLoader();
+        this.material = new THREE.MeshBasicMaterial({
+          map: loader.load('./textures/woodPlank.jpg'),
+        });
+        //this.material = new THREE.MeshBasicMaterial({color: "#664230", side: THREE.DoubleSide});
+        //this.addWiframeHelper(new THREE.Color(0, 0, 0));
+        this.rotation.x = -Math.PI / 2;
+
+      }
+
+    }
+
+    class CannonBaseWheel extends THREE.Mesh {
+      constructor(father) {
+        super();
+        this.father = father;
+        this.geometry = new THREE.CylinderGeometry(0.5, 0.5, .1, 64,
+                1, false);
+        const loader = new THREE.TextureLoader();
+        this.material = new THREE.MeshBasicMaterial({
+          map: loader.load('./textures/rock.jpg'),side: THREE.DoubleSide
+        });
+        //this.material = new THREE.MeshBasicMaterial({color: "#485555", side: THREE.DoubleSide});
+        //this.addWiframeHelper(new THREE.Color(0, 0, 0));
+        this.rotation.z = -Math.PI / 2;
+
+      }
+    }
+
+    class CannonBaseBolt extends THREE.Mesh {
+      constructor(father) {
+        super();
+        this.father = father;
+        this.geometry = new THREE.CylinderGeometry(0.5, 0.5, .1, 64,
+                1, false);
+        const loader = new THREE.TextureLoader();
+        this.material = new THREE.MeshBasicMaterial({
+          map: loader.load('./textures/metalDetails.jpg'),side: THREE.DoubleSide
+        });
+        //this.material = new THREE.MeshBasicMaterial({color: "#363939", side: THREE.DoubleSide});
+        //this.addWiframeHelper(new THREE.Color(0, 0, 0));
+        this.rotation.z = -Math.PI / 2;
+
+      }
+    }
+
+    class CannonBase extends Composite {
+      constructor(father) {
+        super();
+        this.children = [];
+        this.father = father;
+        this.frontBox = new CannonBaseBox(father);
+        this.frontBox.scale.set(1.6, .5, .7);
+        this.frontBox.position.set(0, -.5, .7);
+        this.add(this.frontBox);
+        this.children.push(this.frontBox);
+
+        this.floorBox = new CannonBaseBox(father);
+        this.floorBox.scale.set(1.6, 2, .19);
+        this.floorBox.position.set(0, -.95, -.05);
+        this.add(this.floorBox);
+        this.children.push(this.floorBox);
+
+        this.rightUpBox = new CannonBaseBox(father);
+        this.rightUpBox.scale.set(.09, 1, .23);
+        this.rightUpBox.position.set(.75, -.26, 0.3);
+        this.add(this.rightUpBox);
+        this.children.push(this.rightUpBox);
+        this.rightMiddleBox = new CannonBaseBox(father);
+        this.rightMiddleBox.scale.set(.09, 1.5, .23);
+        this.rightMiddleBox.position.set(.75, -.52, 0.15);
+        this.add(this.rightMiddleBox);
+        this.children.push(this.rightMiddleBox);
+        this.rightDownBox = new CannonBaseBox(father);
+        this.rightDownBox.scale.set(.09, 1.7, .23);
+        this.rightDownBox.position.set(.75, -.78, -.08);
+        this.add(this.rightDownBox);
+        this.children.push(this.rightDownBox);
+
+        this.leftUpBox = new CannonBaseBox(father);
+        this.leftUpBox.scale.set(.09, 1, .23);
+        this.leftUpBox.position.set(-.75, -.26, 0.3);
+        this.add(this.leftUpBox);
+        this.children.push(this.leftUpBox);
+        this.leftMiddleBox = new CannonBaseBox(father);
+        this.leftMiddleBox.scale.set(.09, 1.5, .23);
+        this.leftMiddleBox.position.set(-.75, -.52, 0.15);
+        this.add(this.leftMiddleBox);
+        this.children.push(this.leftMiddleBox);
+        this.leftDownBox = new CannonBaseBox(father);
+        this.leftDownBox.scale.set(.09, 1.7, .23);
+        this.leftDownBox.position.set(-.75, -.78, -.08);
+        this.add(this.leftDownBox);
+        this.children.push(this.leftDownBox);
+
+        this.frontRightWheel = new CannonBaseWheel(father);
+        this.frontRightWheel.position.set(.9, -.79, .7);
+        this.add(this.frontRightWheel);
+        this.children.push(this.frontRightWheel);
+        this.frontRightBolt = new CannonBaseBolt(father);
+        this.frontRightBolt.scale.set(.1, 2, .1);
+        this.frontRightBolt.position.set(.9, -.79, .7);
+        this.add(this.frontRightBolt);
+        this.children.push(this.frontRightBolt);
+
+        this.frontLeftWheel = new CannonBaseWheel(father);
+        this.frontLeftWheel.position.set(-.9, -.79, .7);
+        this.add(this.frontLeftWheel);
+        this.children.push(this.frontLeftWheel);
+        this.frontLeftBolt = new CannonBaseBolt(father);
+        this.frontLeftBolt.scale.set(.1, 2, .1);
+        this.frontLeftBolt.position.set(-.9, -.79, .7);
+        this.add(this.frontLeftBolt);
+        this.children.push(this.frontLeftBolt);
+
+        this.backRightWheel = new CannonBaseWheel(father);
+        this.backRightWheel.scale.set(.7, 1, .7);
+        this.backRightWheel.position.set(.9, -.95, -.7);
+        this.add(this.backRightWheel);
+        this.children.push(this.backRightWheel);
+        this.backRightBolt = new CannonBaseBolt(father);
+        this.backRightBolt.scale.set(.1, 2, .1);
+        this.backRightBolt.position.set(.9, -.95, -.7);
+        this.add(this.backRightBolt);
+        this.children.push(this.backRightBolt);
+
+        this.backLeftWheel = new CannonBaseWheel(father);
+        this.backLeftWheel.scale.set(.7, 1, .7);
+        this.backLeftWheel.position.set(-.9, -.95, -.7);
+        this.add(this.backLeftWheel);
+        this.children.push(this.backLeftWheel);
+        this.backLeftBolt = new CannonBaseBolt(father);
+        this.backLeftBolt.scale.set(.1, 2, .1);
+        this.backLeftBolt.position.set(-.9, -.95, -.7);
+        this.add(this.backLeftBolt);
+        this.children.push(this.backLeftBolt);
+
+
+
+      }
+    }
+
+    class Cannon extends THREE.Group {
+
+      properties = { rotX : 0, dummy : 8}
+
+      constructor() {
+        super();
+
+        this.barrel = new CannonBarrel(this);
+        this.barrel.rotation.x = -Math.PI / 2;
+        this.base = new CannonBase(this);
+        this.add(this.base);
+        this.add(this.barrel);
+        this.position.set(0, 1.3, 0);
+      }
+    }
+
+    class Cannon2 extends THREE.Mesh {
       // TODO: add all properties that are going to be editable for the future animation, like resistance, any constants, etc.
-      properties = { dummy: 8 }
+      properties = { dummy: 8, rotX : 0 }
 
       constructor(x = 0, z = 0) {
         super();
@@ -121,9 +581,11 @@
       }
     }
 
-    function add(mesh) {
-      scene.add(mesh)
-      state.objects.push(mesh)
+    function add(cannon) {
+      scene.add(cannon)
+      cannon.barrel.children.forEach(child => state.objects.push(child));
+      cannon.base.children.forEach(child => state.objects.push(child));
+      //state.objects.push(cannon)
     }
 
     function remove(mesh) {
@@ -135,6 +597,9 @@
       modelMenu = gui.addFolder("Selected Cannon options")
       // TODO: add all properties that are going to be editable for the future animation, like resistance, any constants, etc.
       let dummyProperty = modelMenu.add(state.selectedObject.properties, "dummy").min(-10).max(10).name("Dummy");
+      let sliderRotX = modelMenu.add(state.selectedObject.properties, "rotX").min(-180).max(-90).step(10).setValue(-90).name("X (deg)").listen().onChange(function (value) {
+        state.selectedObject.barrel.animateRotXQ(state.selectedObject.properties.rotX * Math.PI / 180, 0, .35, 0);
+      });
       modelMenu.open()
       cleanInputsStyle();
     }
@@ -218,6 +683,9 @@
       const addCannonbtn = gui.add(state, 'addCannon')
       addCannonbtn.domElement.parentElement.parentElement.id = "addCannonbtn"
 
+      //let sliderRotX = gui.add(state.selectedObject.properties, "dummy").min(-10).max(10).name("Dummy");
+
+
 
       cleanInputsStyle();
 
@@ -245,7 +713,9 @@
 
       scene.add(floor)
       scene.add(new Target(2, 2, 0))
-      add(new Cannon()) // this adds the object to the modifiable list
+      //add(new Cannon2())
+      let cannon = new Cannon();
+      add(cannon);// this adds the object to the modifiable list
       renderLoop();
 
       renderer.domElement.addEventListener('pointerdown', e => {
@@ -257,9 +727,9 @@
 
         raycaster.setFromCamera(mouse, cameras[0]);
         const intersects = raycaster.intersectObjects(state.objects);
-        if (intersects.length > 0 && state.selectedObject !== intersects[0].object && !state.transforming) {
+        if (intersects.length > 0 && state.selectedObject !== intersects[0].object.father && !state.transforming) {
           removeModelMenu();
-          state.selectedObject = intersects[0].object
+          state.selectedObject = intersects[0].object.father
           transfControl.attach(state.selectedObject)
           genModelMenu();
         } else if (intersects.length === 0 && !state.transforming) {
