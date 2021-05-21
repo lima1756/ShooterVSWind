@@ -236,7 +236,7 @@
       setMatrixIdentity() {
         this.matrixAutoUpdate = false;
         this.matrix.copy(new THREE.Matrix4());
-        
+
         this.position.setFromMatrixPosition(this.matrix);
         this.setRotationFromMatrix(this.matrix);
       }
@@ -256,10 +256,10 @@
         super();
         this.father = father;
         this.geometry = new THREE.CylinderGeometry(0.4, 0.4, 1.5, 64,
-                1, true);
+          1, true);
         const loader = new THREE.TextureLoader();
         this.material = new THREE.MeshBasicMaterial({
-          map: loader.load('./textures/metal.jpg'),side: THREE.DoubleSide
+          map: loader.load('./textures/metal.jpg'), side: THREE.DoubleSide
         });
         //this.material = new THREE.MeshBasicMaterial({color: "#485555", side: THREE.DoubleSide});
         //this.addWiframeHelper(new THREE.Color(0, 0, 0));
@@ -274,7 +274,7 @@
         this.geometry = new THREE.SphereGeometry(0.43, 32, 32);
         const loader = new THREE.TextureLoader();
         this.material = new THREE.MeshBasicMaterial({
-          map: loader.load('./textures/metal.jpg'),side: THREE.DoubleSide
+          map: loader.load('./textures/metal.jpg'), side: THREE.DoubleSide
         });
         //this.material = new THREE.MeshBasicMaterial({color: "#485555", side: THREE.DoubleSide});
         //this.addWiframeHelper(new THREE.Color(0, 0, 0));
@@ -289,7 +289,7 @@
         this.geometry = new THREE.TorusGeometry(0.4, 0.08, 30, 100);
         const loader = new THREE.TextureLoader();
         this.material = new THREE.MeshBasicMaterial({
-          map: loader.load('./textures/metalDetails.jpg'),side: THREE.DoubleSide
+          map: loader.load('./textures/metalDetails.jpg'), side: THREE.DoubleSide
         });
         //this.material = new THREE.MeshBasicMaterial({color: "#646868", side: THREE.DoubleSide});
         //this.addWiframeHelper(new THREE.Color(0, 0, 0));
@@ -366,10 +366,10 @@
         super();
         this.father = father;
         this.geometry = new THREE.CylinderGeometry(0.5, 0.5, .1, 64,
-                1, false);
+          1, false);
         const loader = new THREE.TextureLoader();
         this.material = new THREE.MeshBasicMaterial({
-          map: loader.load('./textures/rock.jpg'),side: THREE.DoubleSide
+          map: loader.load('./textures/rock.jpg'), side: THREE.DoubleSide
         });
         //this.material = new THREE.MeshBasicMaterial({color: "#485555", side: THREE.DoubleSide});
         //this.addWiframeHelper(new THREE.Color(0, 0, 0));
@@ -383,10 +383,10 @@
         super();
         this.father = father;
         this.geometry = new THREE.CylinderGeometry(0.5, 0.5, .1, 64,
-                1, false);
+          1, false);
         const loader = new THREE.TextureLoader();
         this.material = new THREE.MeshBasicMaterial({
-          map: loader.load('./textures/metalDetails.jpg'),side: THREE.DoubleSide
+          map: loader.load('./textures/metalDetails.jpg'), side: THREE.DoubleSide
         });
         //this.material = new THREE.MeshBasicMaterial({color: "#363939", side: THREE.DoubleSide});
         //this.addWiframeHelper(new THREE.Color(0, 0, 0));
@@ -493,7 +493,7 @@
 
     class Cannon extends THREE.Group {
 
-      properties = { rotX : 0, ball_speed : 0, dummy : 8, ball_mass : 1.0}
+      properties = { rotX: 0, ball_speed: 0, dummy: 8, ball_mass: 1.0 }
 
       constructor() {
         super();
@@ -508,48 +508,35 @@
       }
     }
 
-    class Cannon2 extends THREE.Mesh {
-      // TODO: add all properties that are going to be editable for the future animation, like resistance, any constants, etc.
-      properties = { dummy: 8, rotX : 0 , ball_speed : 1.0, ball_mass : 1.0}
-
-      constructor(x = 0, z = 0) {
-        super();
-        this.geometry = new THREE.BoxGeometry(1, 1, 1);
-        this.material = new THREE.MeshBasicMaterial({ color: 111 });
-        this.position.set(x, 0.5, z)
-      }
-    }
-
-    class CannonBall extends THREE.Mesh{
+    class CannonBall extends THREE.Mesh {
       properties = {
-        mass : 0.1, 
+        mass: 0.1,
         radius: 1.0,
-        initial_position: new THREE.Vector3(0,0,0),
-        position: new THREE.Vector3(0,0,0),
-        initial_velocity: new THREE.Vector3(0,0,0),
-        velocity: new THREE.Vector3(0,0,0),
-        acceleration: new THREE.Vector3(0,GRAVITY_ACCELERATION,0),
+        initial_position: new THREE.Vector3(0, 0, 0),
+        position: new THREE.Vector3(0, 0, 0),
+        initial_velocity: new THREE.Vector3(0, 0, 0),
+        velocity: new THREE.Vector3(0, 0, 0),
+        acceleration: new THREE.Vector3(0, GRAVITY_ACCELERATION, 0),
       }
 
       constructor(mass = 1.0, radius = 1.0) {
         super();
         this.properties.mass = mass;
         this.properties.radius = radius;
-        const geometry = new THREE.SphereGeometry( radius, 32, 32 );
+        this.geometry = new THREE.SphereGeometry(radius, 32, 32);
         const loader = new THREE.TextureLoader();
-        const material = new THREE.MeshBasicMaterial({
+        this.material = new THREE.MeshBasicMaterial({
           color: 0xff00ff, side: THREE.DoubleSide,
           //map: loader.load('./textures/metalDetails.jpg'),side: THREE.DoubleSide
         });
-        this.sphere = new THREE.Mesh( geometry, material );
       }
 
-      setInitialPosition(pos){
+      setInitialPosition(pos) {
         this.properties.initial_position = pos;
         this.properties.position = pos;
       }
 
-      setInitialVelocity(vel){
+      setInitialVelocity(vel) {
         this.properties.initial_velocity = vel;
         this.properties.velocity = vel;
       }
@@ -584,7 +571,7 @@
       totalTries: 0,
       transforming: false,
       isAnimationStarted: false,
-      air_resistance_coefficient_b : 1.0,
+      air_resistance_coefficient_b: 1.0,
     };
 
 
@@ -595,7 +582,7 @@
 
     //Physics variables
     const GRAVITY_ACCELERATION = -9.81;
-    let  start_time;
+    let start_time;
 
     domFabMain.onclick = () => {
       state.editMode = !state.editMode
@@ -607,33 +594,34 @@
         //console.log(document.getElementById("addCannonbtn"))
         document.getElementById("addCannonbtn").style.display = "none"
         // TODO if some variable needs to be initializated for the simulation
-        
+
         // Set cannonBalls
         state.cannons.forEach((c) => {
           //TODO check if value of Radius is proper.
-            c.ball = new CannonBall(c.properties.ball_mass, 2.0);
-            c.ball.setInitialPosition(new THREE.Vector3(
-              c.barrel.position.x + c.position.x,
-              c.barrel.position.y + c.position.y,
-              c.barrel.position.z + c.position.z
-              ));
-            
-            let theta = -(c.barrel.rotation.x + Math.PI/2);
-            let phi = c.rotation.y;
+          c.ball = new CannonBall(c.properties.ball_mass, 2.0);
+          c.ball.setInitialPosition(new THREE.Vector3(
+            c.barrel.position.x + c.position.x,
+            c.barrel.position.y + c.position.y,
+            c.barrel.position.z + c.position.z
+          ));
 
-            c.ball.setInitialVelocity(new THREE.Vector3(
-              c.properties.ball_speed * Math.cos(theta) * Math.sin(phi),
-              c.properties.ball_speed * Math.sin(theta),
-              c.properties.ball_speed * Math.cos(theta) * Math.cos(phi)
-            ));
-            scene.add(c.ball);
-            
-          });
-        
+          let theta = -(c.barrel.rotation.x + Math.PI / 2);
+          let phi = c.rotation.y;
+
+          c.ball.setInitialVelocity(new THREE.Vector3(
+            c.properties.ball_speed * Math.cos(theta) * Math.sin(phi),
+            c.properties.ball_speed * Math.sin(theta),
+            c.properties.ball_speed * Math.cos(theta) * Math.cos(phi)
+          ));
+          console.log("here")
+          scene.add(c.ball);
+
+        });
+
       }
       else {
         // TODO if something needs to be stopped/removed/cleaned
-        
+
         // Delete balls.
         state.cannons.forEach((c) => {
           scene.remove(c.ball);
@@ -681,7 +669,7 @@
       let sliderBallMass = modelMenu.add(state.selectedObject.properties, "ball_mass").min(2).max(90).step(2).setValue(2).name("Mass of Ball").listen().onChange(function (value) {
       });
       let sliderRotX = modelMenu.add(state.selectedObject.properties, "rotX").min(0).max(90).step(2).setValue(0).name("X (deg)").listen().onChange(function (value) {
-        state.selectedObject.barrel.animateRotXQ((-state.selectedObject.properties.rotX-90) * Math.PI / 180, 0, .35, 0);
+        state.selectedObject.barrel.animateRotXQ((-state.selectedObject.properties.rotX - 90) * Math.PI / 180, 0, .35, 0);
       });
       let sliderInitialSpeed = modelMenu.add(state.selectedObject.properties, "ball_speed").min(0.2).max(20).step(0.2).setValue(1.0).name("Initial Speed").listen().onChange(function (value) {
       });
@@ -875,48 +863,48 @@
     function updateScene(time_now) {
       if (!state.editMode) {
         time_now *= 0.001;  // make it seconds
-        if(!state.isAnimationStarted){
+        if (!state.isAnimationStarted) {
           start_time = time_now;
           state.isAnimationStarted = true;
         }
-      
+
         let time = time_now - start_time;
         // TODO: animate cannons and other stuff if required
         let b = state.air_resistance_coefficient_b;
-        state.cannons.forEach((c)=>{
-          let s0,v0,m, exp, g, bm, mb;
+        state.cannons.forEach((c) => {
+          let s0, v0, m, exp, g, bm, mb;
           g = GRAVITY_ACCELERATION;
-          v0 =c.ball.properties.initial_velocity;
-          s0 =c.ball.properties.initial_position;
-          m =c.ball.properties.mass;
-          bm = b/m;
-          mb = m/b;
+          v0 = c.ball.properties.initial_velocity;
+          s0 = c.ball.properties.initial_position;
+          m = c.ball.properties.mass;
+          bm = b / m;
+          mb = m / b;
           exp = Math.exp(-bm * time);
 
-          c.ball.properties.acceleration.x =  -bm * v0.x * exp;
+          c.ball.properties.acceleration.x = -bm * v0.x * exp;
           c.ball.properties.acceleration.y = (-bm * v0.y + g) * exp;
-          c.ball.properties.acceleration.z =  -bm * v0.z * exp;
+          c.ball.properties.acceleration.z = -bm * v0.z * exp;
 
           c.ball.properties.velocity.x = v0.x * exp;
-          c.ball.properties.velocity.y = v0.y * exp + (1-exp)*(mb*g);
+          c.ball.properties.velocity.y = v0.y * exp + (1 - exp) * (mb * g);
           c.ball.properties.velocity.z = v0.z * exp;
 
-          c.ball.properties.position.x =  s0.x +  mb * v0.x * (1- exp);
-          c.ball.properties.position.y =  s0.y + (mb * (v0.y - mb*g) * (1-exp))+ (mb * g * time);
-          c.ball.properties.position.z =  s0.z +  mb * v0.z * (1- exp);
+          c.ball.properties.position.x = s0.x + mb * v0.x * (1 - exp);
+          c.ball.properties.position.y = s0.y + (mb * (v0.y - mb * g) * (1 - exp)) + (mb * g * time);
+          c.ball.properties.position.z = s0.z + mb * v0.z * (1 - exp);
 
           console.log(c.ball.properties.position,
             c.ball.properties.velocity,
             c.ball.properties.acceleration);
 
-            c.ball.position.set(c.ball.properties.position);
+          c.ball.position.set(c.ball.properties.position);
 
         });
-        
+
 
         // if in gamemode, then calculate if it colides with target, if not after the objet is below y=0 or outside some bounding box, tries+=1 and change mode to editMode
-      }else{
-        if(state.isAnimationStarted){
+      } else {
+        if (state.isAnimationStarted) {
           state.isAnimationStarted = false;
         }
       }
