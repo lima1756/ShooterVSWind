@@ -493,7 +493,7 @@
 
     class Cannon extends THREE.Group {
 
-      properties = { rotX : 0, dummy : 8}
+      properties = { rotX : 0, ball_speed : 0, dummy : 8, ball_mass : 1.0}
 
       constructor() {
         super();
@@ -510,7 +510,7 @@
 
     class Cannon2 extends THREE.Mesh {
       // TODO: add all properties that are going to be editable for the future animation, like resistance, any constants, etc.
-      properties = { dummy: 8, rotX : 0 }
+      properties = { dummy: 8, rotX : 0 , ball_speed : 1.0, ball_mass : 1.0}
 
       constructor(x = 0, z = 0) {
         super();
@@ -521,7 +521,9 @@
     }
 
     class CannonBall extends THREE.Mesh{
-      properties = {mass : 0.1, radius: 1.0,
+      properties = {
+        mass : 0.1, 
+        radius: 1.0,
         initial_position: new THREE.Vector3(0,0,0),
         position: new THREE.Vector3(0,0,0),
         initial_velocity: new THREE.Vector3(0,0,0),
@@ -536,7 +538,8 @@
         const geometry = new THREE.SphereGeometry( radius, 32, 32 );
         const loader = new THREE.TextureLoader();
         const material = new THREE.MeshBasicMaterial({
-          map: loader.load('./textures/metalDetails.jpg'),side: THREE.FrontSide
+          color: 0xff00ff, side: THREE.DoubleSide,
+          //map: loader.load('./textures/metalDetails.jpg'),side: THREE.DoubleSide
         });
         this.sphere = new THREE.Mesh( geometry, material );
       }
@@ -581,6 +584,7 @@
       totalTries: 0,
       transforming: false,
       isAnimationStarted: false,
+      air_resistance_coefficient_b : 1.0,
     };
 
 
@@ -591,11 +595,7 @@
 
     //Physics variables
     const GRAVITY_ACCELERATION = -9.81;
-    let  start_time, air_resistance_coefficient_b;
-
-    //TODO control air_resistance_coefficient from GUI / general controls.
-    air_resistance_coefficient_b = 1.0;
-   
+    let  start_time;
 
     domFabMain.onclick = () => {
       state.editMode = !state.editMode
@@ -607,9 +607,39 @@
         //console.log(document.getElementById("addCannonbtn"))
         document.getElementById("addCannonbtn").style.display = "none"
         // TODO if some variable needs to be initializated for the simulation
+        
+        // Set cannonBalls
+        state.cannons.forEach((c) => {
+          //TODO check if value of Radius is proper.
+            c.ball = new CannonBall(c.properties.ball_mass, 2.0);
+            c.ball.setInitialPosition(new THREE.Vector3(
+              c.barrel.position.x + c.position.x,
+              c.barrel.position.y + c.position.y,
+              c.barrel.position.z + c.position.z
+              ));
+            
+            let theta = -(c.barrel.rotation.x + Math.PI/2);
+            let phi = c.rotation.y;
+
+            c.ball.setInitialVelocity(new THREE.Vector3(
+              c.properties.ball_speed * Math.cos(theta) * Math.sin(phi),
+              c.properties.ball_speed * Math.sin(theta),
+              c.properties.ball_speed * Math.cos(theta) * Math.cos(phi)
+            ));
+            scene.add(c.ball);
+            
+          });
+        
       }
       else {
         // TODO if something needs to be stopped/removed/cleaned
+        
+        // Delete balls.
+        state.cannons.forEach((c) => {
+          scene.remove(c.ball);
+          c.ball = null;
+        });
+
         gui.open();
         document.getElementById("addCannonbtn").style.display = "block"
         domFabMainIcon.innerHTML = "play_arrow"
@@ -646,10 +676,14 @@
 
     function genModelMenu() {
       modelMenu = gui.addFolder("Selected Cannon options")
-      // TODO: add all properties that are going to be editable for the future animation, like resistance, any constants, etc.
+      // TODO: add all properties that are going to be editable for the future animation, any constants, etc.
       let dummyProperty = modelMenu.add(state.selectedObject.properties, "dummy").min(-10).max(10).name("Dummy");
+      let sliderBallMass = modelMenu.add(state.selectedObject.properties, "ball_mass").min(2).max(90).step(2).setValue(2).name("Mass of Ball").listen().onChange(function (value) {
+      });
       let sliderRotX = modelMenu.add(state.selectedObject.properties, "rotX").min(0).max(90).step(2).setValue(0).name("X (deg)").listen().onChange(function (value) {
         state.selectedObject.barrel.animateRotXQ((-state.selectedObject.properties.rotX-90) * Math.PI / 180, 0, .35, 0);
+      });
+      let sliderInitialSpeed = modelMenu.add(state.selectedObject.properties, "ball_speed").min(0.2).max(20).step(0.2).setValue(1.0).name("Initial Speed").listen().onChange(function (value) {
       });
       modelMenu.open()
       cleanInputsStyle();
@@ -732,6 +766,9 @@
       gui.add(state, 'references');
       gui.add(state, 'help');
       const addCannonbtn = gui.add(state, 'addCannon')
+      let sliderAirResistance = gui.add(state, "air_resistance_coefficient_b").min(0.1).max(10).step(0.1).setValue(1.0).name("Air resistance coefficient").listen().onChange(function (value) {
+
+      });
       addCannonbtn.domElement.parentElement.parentElement.id = "addCannonbtn"
 
       //let sliderRotX = gui.add(state.selectedObject.properties, "dummy").min(-10).max(10).name("Dummy");
@@ -841,39 +878,11 @@
         if(!state.isAnimationStarted){
           start_time = time_now;
           state.isAnimationStarted = true;
-
-          state.cannons.forEach((c) => console.log(c.barrel.position, c.barrel.rotation, c.barrel.matrixWorld, c.position, c.rotation));
-
-          // Set cannonBalls
-          state.cannons.forEach((c) => {
-            //  CannonBall(mass = 1.0, radius = 1.0)
-            //TODO add MASS from GUI-cannon selected parameter 
-            c.ball = new CannonBall(1.0, 1.0);
-            c.ball.setInitialPosition(new THREE.Vector3(
-              c.barrel.position.x + c.position.x,
-              c.barrel.position.y + c.position.y,
-              c.barrel.position.z + c.position.z
-              ));
-            
-            let theta = -(c.barrel.rotation.x + Math.PI/2);
-            let phi = c.rotation.y;
-
-            //TODO add initial vel from GUI-cannon selected parameter
-            // instead this "initial_speed" variable
-            let initial_speed = 1.0;
-            c.ball.setInitialVelocity(new THREE.Vector3(
-              initial_speed * Math.cos(theta) * Math.sin(phi),
-              initial_speed * Math.sin(theta),
-              initial_speed * Math.cos(theta) * Math.cos(phi)
-            ));
-            scene.add(c.ball);
-            
-          });
         }
       
         let time = time_now - start_time;
         // TODO: animate cannons and other stuff if required
-        let b = air_resistance_coefficient_b;
+        let b = state.air_resistance_coefficient_b;
         state.cannons.forEach((c)=>{
           let s0,v0,m, exp, g, bm, mb;
           g = GRAVITY_ACCELERATION;
@@ -909,13 +918,6 @@
       }else{
         if(state.isAnimationStarted){
           state.isAnimationStarted = false;
-
-          // Delete balls.
-          state.cannons.forEach((c) => {
-            scene.remove(c.ball);
-            c.ball = null;
-          });
-
         }
       }
     }
