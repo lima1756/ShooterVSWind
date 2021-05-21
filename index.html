@@ -227,17 +227,26 @@
       setMatrix(matrix = this.matrixModel) {
         this.matrixAutoUpdate = false;
         this.matrix.copy(matrix);
+
+        this.position.setFromMatrixPosition(this.matrix);
+        this.setRotationFromMatrix(this.matrix);
+
       }
 
       setMatrixIdentity() {
         this.matrixAutoUpdate = false;
         this.matrix.copy(new THREE.Matrix4());
+        
+        this.position.setFromMatrixPosition(this.matrix);
+        this.setRotationFromMatrix(this.matrix);
       }
 
       // Set matrix with matrixModel
       resetMatrix() {
         this.matrixAutoUpdate = false;
         this.matrix.copy(this.matrixModel);
+        this.position.setFromMatrixPosition(this.matrix);
+        this.setRotationFromMatrix(this.matrix);
       }
 
     }
@@ -492,6 +501,7 @@
         this.barrel = new CannonBarrel(this);
         this.barrel.rotation.x = -Math.PI / 2;
         this.base = new CannonBase(this);
+        this.ball = null;
         this.add(this.base);
         this.add(this.barrel);
         this.position.set(0, 1.3, 0);
@@ -510,6 +520,37 @@
       }
     }
 
+    class CannonBall extends THREE.Mesh{
+      properties = {mass : 0.1, radius: 1.0,
+        initial_position: new THREE.Vector3(0,0,0),
+        position: new THREE.Vector3(0,0,0),
+        initial_velocity: new THREE.Vector3(0,0,0),
+        velocity: new THREE.Vector3(0,0,0),
+        acceleration: new THREE.Vector3(0,GRAVITY_ACCELERATION,0),
+      }
+
+      constructor(mass = 1.0, radius = 1.0) {
+        super();
+        this.properties.mass = mass;
+        this.properties.radius = radius;
+        const geometry = new THREE.SphereGeometry( radius, 32, 32 );
+        const loader = new THREE.TextureLoader();
+        const material = new THREE.MeshBasicMaterial({
+          map: loader.load('./textures/metalDetails.jpg'),side: THREE.FrontSide
+        });
+        this.sphere = new THREE.Mesh( geometry, material );
+      }
+
+      setInitialPosition(pos){
+        this.properties.initial_position = pos;
+        this.properties.position = pos;
+      }
+
+      setInitialVelocity(vel){
+        this.properties.initial_velocity = vel;
+        this.properties.velocity = vel;
+      }
+    }
 
     class Target extends THREE.Mesh {
       constructor(x, y, z) {
@@ -533,11 +574,13 @@
         add(new Cannon())
       },
       objects: [],
+      cannons: [],
       editMode: true,
       gameMode: false,
       selectedObject: null,
       totalTries: 0,
       transforming: false,
+      isAnimationStarted: false,
     };
 
 
@@ -546,6 +589,14 @@
     const domFabMainIcon = document.getElementById("fab_main_icon")
     const domFabSecondaryIcon = document.getElementById("fab_secondary_icon")
 
+    //Physics variables
+    const GRAVITY_ACCELERATION = -9.81;
+    let  start_time, air_resistance_coefficient_b;
+
+    //TODO control air_resistance_coefficient from GUI / general controls.
+    air_resistance_coefficient_b = 1.0;
+   
+
     domFabMain.onclick = () => {
       state.editMode = !state.editMode
       if (!state.editMode) {
@@ -553,7 +604,7 @@
         transfControl.detach();
         removeModelMenu();
         gui.close();
-        console.log(document.getElementById("addCannonbtn"))
+        //console.log(document.getElementById("addCannonbtn"))
         document.getElementById("addCannonbtn").style.display = "none"
         // TODO if some variable needs to be initializated for the simulation
       }
@@ -585,7 +636,7 @@
       scene.add(cannon)
       cannon.barrel.children.forEach(child => state.objects.push(child));
       cannon.base.children.forEach(child => state.objects.push(child));
-      //state.objects.push(cannon)
+      state.cannons.push(cannon)
     }
 
     function remove(mesh) {
@@ -597,8 +648,8 @@
       modelMenu = gui.addFolder("Selected Cannon options")
       // TODO: add all properties that are going to be editable for the future animation, like resistance, any constants, etc.
       let dummyProperty = modelMenu.add(state.selectedObject.properties, "dummy").min(-10).max(10).name("Dummy");
-      let sliderRotX = modelMenu.add(state.selectedObject.properties, "rotX").min(-180).max(-90).step(10).setValue(-90).name("X (deg)").listen().onChange(function (value) {
-        state.selectedObject.barrel.animateRotXQ(state.selectedObject.properties.rotX * Math.PI / 180, 0, .35, 0);
+      let sliderRotX = modelMenu.add(state.selectedObject.properties, "rotX").min(0).max(90).step(2).setValue(0).name("X (deg)").listen().onChange(function (value) {
+        state.selectedObject.barrel.animateRotXQ((-state.selectedObject.properties.rotX-90) * Math.PI / 180, 0, .35, 0);
       });
       modelMenu.open()
       cleanInputsStyle();
@@ -701,7 +752,12 @@
       transfControl.showY = false
       transfControl.showZ = true
       transfControl.addEventListener("mouseDown", e => state.transforming = true)
-      transfControl.addEventListener("mouseUp", e => state.transforming = false)
+      transfControl.addEventListener("mouseUp", (e) => {
+        state.transforming = false;
+        //Updating position / rotation after using transfControl
+        state.selectedObject.barrel.position.setFromMatrixPosition(state.selectedObject.barrel.matrix);
+        state.selectedObject.barrel.setRotationFromMatrix(state.selectedObject.barrel.matrix);
+      });
       scene.add(transfControl);
 
 
@@ -740,10 +796,10 @@
       })
     }
 
-    function renderLoop() {
+    function renderLoop(time_now) {
       stats.begin();
       drawScene(); // DRAW SCENE
-      updateScene();
+      updateScene(time_now);
       stats.end();
       stats.update();
       requestAnimationFrame(renderLoop);
@@ -779,10 +835,88 @@
       }
     }
 
-    function updateScene() {
+    function updateScene(time_now) {
       if (!state.editMode) {
+        time_now *= 0.001;  // make it seconds
+        if(!state.isAnimationStarted){
+          start_time = time_now;
+          state.isAnimationStarted = true;
+
+          state.cannons.forEach((c) => console.log(c.barrel.position, c.barrel.rotation, c.barrel.matrixWorld, c.position, c.rotation));
+
+          // Set cannonBalls
+          state.cannons.forEach((c) => {
+            //  CannonBall(mass = 1.0, radius = 1.0)
+            //TODO add MASS from GUI-cannon selected parameter 
+            c.ball = new CannonBall(1.0, 1.0);
+            c.ball.setInitialPosition(new THREE.Vector3(
+              c.barrel.position.x + c.position.x,
+              c.barrel.position.y + c.position.y,
+              c.barrel.position.z + c.position.z
+              ));
+            
+            let theta = -(c.barrel.rotation.x + Math.PI/2);
+            let phi = c.rotation.y;
+
+            //TODO add initial vel from GUI-cannon selected parameter
+            // instead this "initial_speed" variable
+            let initial_speed = 1.0;
+            c.ball.setInitialVelocity(new THREE.Vector3(
+              initial_speed * Math.cos(theta) * Math.sin(phi),
+              initial_speed * Math.sin(theta),
+              initial_speed * Math.cos(theta) * Math.cos(phi)
+            ));
+            scene.add(c.ball);
+            
+          });
+        }
+      
+        let time = time_now - start_time;
         // TODO: animate cannons and other stuff if required
+        let b = air_resistance_coefficient_b;
+        state.cannons.forEach((c)=>{
+          let s0,v0,m, exp, g, bm, mb;
+          g = GRAVITY_ACCELERATION;
+          v0 =c.ball.properties.initial_velocity;
+          s0 =c.ball.properties.initial_position;
+          m =c.ball.properties.mass;
+          bm = b/m;
+          mb = m/b;
+          exp = Math.exp(-bm * time);
+
+          c.ball.properties.acceleration.x =  -bm * v0.x * exp;
+          c.ball.properties.acceleration.y = (-bm * v0.y + g) * exp;
+          c.ball.properties.acceleration.z =  -bm * v0.z * exp;
+
+          c.ball.properties.velocity.x = v0.x * exp;
+          c.ball.properties.velocity.y = v0.y * exp + (1-exp)*(mb*g);
+          c.ball.properties.velocity.z = v0.z * exp;
+
+          c.ball.properties.position.x =  s0.x +  mb * v0.x * (1- exp);
+          c.ball.properties.position.y =  s0.y + (mb * (v0.y - mb*g) * (1-exp))+ (mb * g * time);
+          c.ball.properties.position.z =  s0.z +  mb * v0.z * (1- exp);
+
+          console.log(c.ball.properties.position,
+            c.ball.properties.velocity,
+            c.ball.properties.acceleration);
+
+            c.ball.position.set(c.ball.properties.position);
+
+        });
+        
+
         // if in gamemode, then calculate if it colides with target, if not after the objet is below y=0 or outside some bounding box, tries+=1 and change mode to editMode
+      }else{
+        if(state.isAnimationStarted){
+          state.isAnimationStarted = false;
+
+          // Delete balls.
+          state.cannons.forEach((c) => {
+            scene.remove(c.ball);
+            c.ball = null;
+          });
+
+        }
       }
     }
 
