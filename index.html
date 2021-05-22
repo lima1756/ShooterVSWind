@@ -162,20 +162,6 @@
         this.setMatrix();
       }
 
-      addRotationYQ(theta, xq, yq, zq) {
-        this.addTranslation(xq, yq, zq);
-        this.addRotationY(theta);
-        this.addTranslation(-xq, -yq, -zq);
-        this.setMatrix();
-      }
-
-      addRotationZQ(theta, xq, yq, zq) {
-        this.addTranslation(xq, yq, zq);
-        this.addRotationZ(theta);
-        this.addTranslation(-xq, -yq, -zq);
-        this.setMatrix();
-      }
-
       addTranslation(tx, ty, tz) {
         let T = new THREE.Matrix4();
         T.makeTranslation(tx, ty, tz);
@@ -183,46 +169,10 @@
         this.setMatrix();
       }
 
-      animateRotX(theta) {
-        let RX = this.getRotationX(theta);
-        let M = new THREE.Matrix4();
-        M.multiplyMatrices(RX, this.matrixModel);
-        this.setMatrix(M);
-      }
-
-      animateRotY(theta) {
-        let RY = this.getRotationY(theta);
-        let M = new THREE.Matrix4();
-        M.multiplyMatrices(RY, this.matrixModel);
-        this.setMatrix(M);
-      }
-
-      animateRotZ(theta) {
-        let RZ = this.getRotationZ(theta);
-        let M = new THREE.Matrix4();
-        M.multiplyMatrices(RZ, this.matrixModel);
-        this.setMatrix(M);
-      }
-
       animateRotXQ(theta, xq, yq, zq) {
         let RXQ = this.getRotationXQ(theta, xq, yq, zq);
         let M = new THREE.Matrix4();
         M.multiplyMatrices(RXQ, this.matrixModel);
-        this.setMatrix(M);
-      }
-
-      animateRotYQ(theta, xq, yq, zq) {
-        // M = T(Q) Ry T(-Q)
-        let RYQ = this.getRotationYQ(theta, xq, yq, zq);
-        let M = new THREE.Matrix4();
-        M.multiplyMatrices(RYQ, this.matrixModel);
-        this.setMatrix(M);
-      }
-
-      animateRotZQ(theta, xq, yq, zq) {
-        let RZQ = this.getRotationZQ(theta, xq, yq, zq);
-        let M = new THREE.Matrix4();
-        M.multiplyMatrices(RZQ, this.matrixModel);
         this.setMatrix(M);
       }
 
@@ -495,7 +445,7 @@
 
     class Cannon extends THREE.Group {
 
-      properties = { rotX: 0, ball_speed: 0, dummy: 8, ball_mass: 1.0 }
+      properties = { rotX: 0, ball_speed: 1, ball_mass: 1.0 }
 
       constructor() {
         super();
@@ -575,13 +525,15 @@
 
       async build(x, y, z) {
         if (Target.baseTarget) {
-          return Target.baseTarget.clone();
+          const target = Target.baseTarget.clone();
+          target.position.set(x, y, z)
+          return target;
         }
         try {
           const materials = await Target.mtlPromise();
           const target = (await Target.objPromise(materials)).children[0];
           target.position.set(x, y, z)
-          target.lookAt(0, 0, 0)
+          target.scale.set(4, 4, 4)
           Target.baseTarget = target;
           return target;
         }
@@ -602,6 +554,7 @@
       },
       objects: [],
       cannons: [],
+      lines: [],
       editMode: true,
       gameMode: false,
       selectedObject: null,
@@ -609,7 +562,13 @@
       transforming: false,
       isAnimationStarted: false,
       air_resistance_coefficient_b: 1.0,
+      target: null
     };
+
+    const map_size = 128;
+
+    const MAX_POINTS = 1000000;
+    let curr_point = 0;
 
     const domFabMain = document.getElementById("fab_main")
     const domFabSecondary = document.getElementById("fab_secondary")
@@ -624,16 +583,24 @@
       state.editMode = !state.editMode
       if (!state.editMode) {
         domFabMainIcon.innerHTML = "stop"
+        domFabSecondary.style.display = "none"
         transfControl.detach();
         removeModelMenu();
         gui.close();
-        //console.log(document.getElementById("addCannonbtn"))
         document.getElementById("addCannonbtn").style.display = "none"
-        // TODO if some variable needs to be initializated for the simulation
-
+        curr_point = 0;
         // Set cannonBalls
         state.cannons.forEach((c) => {
-          //TODO check if value of Radius is proper.
+          // initializing lines per cannon
+          const material = new THREE.LineBasicMaterial({ color: 0xff0000, linewidth: 20 });
+          const geometry = new THREE.BufferGeometry();
+          const positions = new Float32Array(MAX_POINTS * 3);
+          geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+          geometry.setDrawRange(0, 0);
+          const line = new THREE.Line(geometry, material);
+          state.lines.push(line)
+          scene.add(line)
+
           c.ball = new CannonBall(c.properties.ball_mass, 0.5);
           c.ball.setInitialPosition(new THREE.Vector3(
             c.barrel.position.x + c.position.x,
@@ -649,40 +616,83 @@
             c.properties.ball_speed * Math.sin(theta),
             c.properties.ball_speed * Math.cos(theta) * Math.cos(phi)
           ));
-          console.log("here")
           scene.add(c.ball);
 
         });
 
+        if (state.gameMode) {
+          state.totalTries += 1;
+        }
       }
       else {
         // TODO if something needs to be stopped/removed/cleaned
 
-        // Delete balls.
         state.cannons.forEach((c) => {
           scene.remove(c.ball);
           c.ball = null;
         });
 
+        state.lines.forEach((l) => {
+          scene.remove(l)
+        })
+        state.lines = []
+
         gui.open();
+        domFabSecondary.style.display = "inline-block"
         document.getElementById("addCannonbtn").style.display = "block"
         domFabMainIcon.innerHTML = "play_arrow"
       }
     }
 
-    domFabSecondary.onclick = () => {
+    const cleanUp = () => {
+      state.cannons.forEach((c) => {
+        scene.remove(c);
+        scene.remove(c.ball);
+        state.selectedObject = null;
+        c.ball = null;
+      });
+      state.cannons = []
+      state.objects = []
+      if (state.target) {
+        scene.remove(state.target)
+        state.target = null;
+      }
+    }
+
+    const setGameMode = async () => {
+      let cannon = new Cannon();
+      add(cannon);
+
+      transfControl.showX = false
+      transfControl.showY = true
+      transfControl.showZ = false
+      transfControl.setMode("rotate")
+
+      const x = Math.ceil(Math.random() * map_size / 2) * (Math.round(Math.random()) ? 1 : -1)
+      const y = Math.floor(Math.random() * map_size / 2 - 10) + 10;
+      const z = Math.ceil(Math.random() * map_size / 2) * (Math.round(Math.random()) ? 1 : -1)
+      const target = await new Target().build(x, y, z);
+      // const geometry = new THREE.BoxGeometry(3, 5, 3);
+      // const material = new THREE.MeshBasicMaterial({ color: 0x00ff00, wireframe: true });
+      // const cube = new THREE.Mesh(geometry, material);
+      // cube.position.set(x, y + 2.45, z)
+      // scene.add(cube);
+      scene.add(target)
+      state.target = target;
+      state.totalTries = 0
+    }
+
+    domFabSecondary.onclick = async () => {
       state.gameMode = !state.gameMode;
       if (!state.gameMode) {
-        // TODO: complete cleanup (?)
+        cleanUp();
         domFabSecondaryIcon.innerHTML = "gamepad"
         document.getElementById("addCannonbtn").style.display = "block"
       } else {
         domFabSecondaryIcon.innerHTML = "help_outline"
         document.getElementById("addCannonbtn").style.display = "none"
-        // TODO: add target randomly and set all variables to play
-        // I'm thinking on automatically add the cannon in the origin and disable movement, 
-        // just enable rotation so the player needs to target without moving it
-        state.totalTries = 0
+        cleanUp();
+        setGameMode();
       }
     }
 
@@ -701,13 +711,12 @@
     function genModelMenu() {
       modelMenu = gui.addFolder("Selected Cannon options")
       // TODO: add all properties that are going to be editable for the future animation, any constants, etc.
-      let dummyProperty = modelMenu.add(state.selectedObject.properties, "dummy").min(-10).max(10).name("Dummy");
-      let sliderBallMass = modelMenu.add(state.selectedObject.properties, "ball_mass").min(0.1).max(90.0).step(.1).setValue(2.0).name("Mass of Ball").listen().onChange(function (value) {
+      let sliderBallMass = modelMenu.add(state.selectedObject.properties, "ball_mass").min(0.1).max(90.0).step(.1).setValue(state.selectedObject.properties.ball_mass).name("Mass of Ball").listen().onChange(function (value) {
       });
-      let sliderRotX = modelMenu.add(state.selectedObject.properties, "rotX").min(0).max(90).step(2).setValue(0).name("X (deg)").listen().onChange(function (value) {
+      let sliderRotX = modelMenu.add(state.selectedObject.properties, "rotX").min(0).max(90).step(.5).setValue(state.selectedObject.properties.rotX).name("X (deg)").listen().onChange(function (value) {
         state.selectedObject.barrel.animateRotXQ((-state.selectedObject.properties.rotX - 90) * Math.PI / 180, 0, .35, 0);
       });
-      let sliderInitialSpeed = modelMenu.add(state.selectedObject.properties, "ball_speed").min(1).max(250).step(1).setValue(10).name("Initial Speed").listen().onChange(function (value) {
+      let sliderInitialSpeed = modelMenu.add(state.selectedObject.properties, "ball_speed").min(1).max(250).step(1).setValue(state.selectedObject.properties.ball_speed).name("Initial Speed").listen().onChange(function (value) {
       });
       modelMenu.open()
       cleanInputsStyle();
@@ -798,15 +807,12 @@
       });
       addCannonbtn.domElement.parentElement.parentElement.id = "addCannonbtn"
 
-      //let sliderRotX = gui.add(state.selectedObject.properties, "dummy").min(-10).max(10).name("Dummy");
-
-
-
       cleanInputsStyle();
 
 
       // CONTROL TRANSFORM
       transfControl = new TransformControls(cameras[0], renderer.domElement);
+      transfControl.rotationSnap = .003
       transfControl.addEventListener('dragging-changed',
         function (event) {
           cameraControls.enabled = !event.value;
@@ -826,17 +832,22 @@
 
 
       // models
-      const plane = new THREE.PlaneGeometry(64, 64);
-      const material = new THREE.MeshBasicMaterial({ color: 0xffff00 });
+      const loader = new THREE.TextureLoader();
+      const texture = loader.load('https://threejsfundamentals.org/threejs/resources/images/checker.png');
+      texture.wrapS = THREE.RepeatWrapping;
+      texture.wrapT = THREE.RepeatWrapping;
+      texture.magFilter = THREE.NearestFilter;
+      const repeats = map_size / 2;
+      texture.repeat.set(repeats, repeats);
+      const plane = new THREE.PlaneGeometry(map_size, map_size);
+      const material = new THREE.MeshPhongMaterial({
+        map: texture,
+        side: THREE.DoubleSide,
+      });
       const floor = new THREE.Mesh(plane, material);
       floor.rotation.x = -0.5 * Math.PI;
 
       scene.add(floor)
-      const target = await new Target().build(2, 2, 0);
-      scene.add(target)
-      //add(new Cannon2())
-      let cannon = new Cannon();
-      add(cannon);// this adds the object to the modifiable list
       renderLoop();
 
       renderer.domElement.addEventListener('pointerdown', e => {
@@ -926,13 +937,18 @@
         let time = time_now - start_time;
         // TODO: animate cannons and other stuff if required
         let b = state.air_resistance_coefficient_b;
-        state.cannons.forEach((c) => {
+        state.cannons.forEach(async (c, i) => {
           let s0, v0, m, exp, g, bm, mb;
           g = GRAVITY_ACCELERATION;
           v0 = c.ball.properties.initial_velocity;
           s0 = c.ball.properties.initial_position;
           m = c.ball.properties.mass;
-          if(b > 0.001){
+          if (c.ball.position.x > map_size / 2 || c.ball.position.x < -map_size / 2
+            || c.ball.position.z > map_size / 2 || c.ball.position.z < -map_size / 2
+            || c.ball.position.y > map_size / 2 || c.ball.position.y < 0) {
+            return
+          }
+          if (b > 0.001) {
             bm = b / m;
             mb = m / b;
             exp = Math.exp(-bm * time);
@@ -945,10 +961,10 @@
             c.ball.properties.velocity.y = (v0.y * exp) + ((1 - exp) * (mb * g));
             c.ball.properties.velocity.z = v0.z * exp;
 
-            c.ball.properties.position.x =  (mb * v0.x * (1 - exp));
-            c.ball.properties.position.y =  (mb * (v0.y - mb * g) * (1 - exp)) + (mb * g * time);
-            c.ball.properties.position.z =  (mb * v0.z * (1 - exp));
-          }else{
+            c.ball.properties.position.x = (mb * v0.x * (1 - exp));
+            c.ball.properties.position.y = (mb * (v0.y - mb * g) * (1 - exp)) + (mb * g * time);
+            c.ball.properties.position.z = (mb * v0.z * (1 - exp));
+          } else {
             c.ball.properties.acceleration.x = 0;
             c.ball.properties.acceleration.y = g;
             c.ball.properties.acceleration.z = 0;
@@ -957,23 +973,50 @@
             c.ball.properties.velocity.y = v0.y + (time * g);
             c.ball.properties.velocity.z = v0.z;
 
-            c.ball.properties.position.x =  (time * v0.x );
-            c.ball.properties.position.y =  (time * v0.y ) + (0.5 * g * time * time);
-            c.ball.properties.position.z =  (time * v0.z );
+            c.ball.properties.position.x = (time * v0.x);
+            c.ball.properties.position.y = (time * v0.y) + (0.5 * g * time * time);
+            c.ball.properties.position.z = (time * v0.z);
           }
+          if (curr_point < MAX_POINTS) {
+            const line = state.lines[i];
+            const data = line.geometry.attributes.position.array;
+            data[curr_point] = s0.x + c.ball.properties.position.x
+            data[curr_point + 1] = s0.y + c.ball.properties.position.y
+            data[curr_point + 2] = s0.z + c.ball.properties.position.z
+            line.geometry.setDrawRange(0, curr_point / 3 + 1);
+            console.log(data)
+            line.geometry.attributes.position.needsUpdate = true;
+          }
+
 
           console.log(
             c.ball.properties.position,
             c.ball.properties.velocity,
             c.ball.properties.acceleration
-            );
+          );
+
+          if (state.gameMode) {
+
+            if (c.ball.position.x < state.target.position.x + 2
+              && c.ball.position.x > state.target.position.x - 2
+              && c.ball.position.y < (state.target.position.y + 2.45) + 3
+              && c.ball.position.y > (state.target.position.y + 2.45) - 3
+              && c.ball.position.z < state.target.position.z + 2
+              && c.ball.position.z > state.target.position.z - 2) {
+              alert(`You hit it!\nIt took you ${state.totalTries} attempts`)
+              cleanUp()
+              domFabMain.onclick();
+              await setGameMode()
+              return;
+            }
+          }
 
           c.ball.position.x = s0.x + c.ball.properties.position.x;
           c.ball.position.y = s0.y + c.ball.properties.position.y;
           c.ball.position.z = s0.z + c.ball.properties.position.z;
 
         });
-
+        curr_point += 3;
 
         // if in gamemode, then calculate if it colides with target, if not after the objet is below y=0 or outside some bounding box, tries+=1 and change mode to editMode
       } else {
@@ -1004,6 +1047,9 @@
           transfControl.setMode("rotate")
           break;
         case "KeyT":
+          if (state.gameMode) {
+            return;
+          }
           transfControl.showX = true
           transfControl.showY = false
           transfControl.showZ = true

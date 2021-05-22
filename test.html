@@ -26,6 +26,9 @@
     let scene, renderer, stats, cameraControls, transfControl, gui, modelMenu;
     let cameras = []; // perspective, top, fron, side
 
+    let currPoint = 0;
+    let line;
+
 
     async function init() {
       // RENDERER
@@ -43,7 +46,7 @@
       // CAMERA 0 Perspective
       cameras.push(new THREE.PerspectiveCamera(fovy, aspectRatio, nearPlane, farPlane));
       cameras[0].lookAt(0, 0, 0);
-      cameras[0].position.set(10, 2, 0);
+      cameras[0].position.set(10, 10, 0);
       cameraControls = new OrbitControls(cameras[0], renderer.domElement);
       cameraControls.maxPolarAngle = Math.PI / 2 - 0.02
 
@@ -52,37 +55,20 @@
       const light = new THREE.AmbientLight(0x404040, 5);
       scene.add(light);
 
-      const OBJFile = 'barrel.obj';
-      const MTLFile = 'barrel.mtl';
-      const textureFile = 'barrel.png';
+      var geometry = new THREE.BufferGeometry();
+      var MAX_POINTS = 500;
+      let positions = new Float32Array(MAX_POINTS * 3);
+      geometry.addAttribute('position', new THREE.BufferAttribute(positions, 3));
 
+      // material
+      var material = new THREE.LineBasicMaterial({
+        color: 0xff0000,
+        linewidth: 2
+      });
 
-      const mtlloader = new MTLLoader();
-      mtlloader.setPath('./textures/');
-      mtlloader.load(MTLFile, (m) => {
-        m.preload();
-
-        const objloader = new OBJLoader();
-        objloader.setMaterials(m);
-        objloader.setPath('./models/');
-        objloader.load(OBJFile, (o) => {
-          const texture = new THREE.TextureLoader().load('textures/barrel.png');
-          console.log(o)
-          // o.children[1].material.map = texture;
-          o.traverse(child => {
-            if (child instanceof THREE.Mesh) {
-              console.log(child)
-              child.material.map = texture;
-              child.material.side = THREE.DoubleSide
-            }
-          })
-          scene.add(o)
-        }, () => { }, (e) => {
-          console.log(e)
-        });
-      }, () => { }, (e) => { console.log(e) });
-
-
+      // line
+      line = new THREE.Line(geometry, material);
+      scene.add(line);
 
 
       renderLoop();
@@ -105,6 +91,16 @@
     }
 
     function updateScene(time_now) {
+      var positions = line.geometry.attributes.position.array;
+      const x = currPoint;
+      const y = currPoint;
+      const z = currPoint;
+      positions[currPoint++] = x;
+      positions[currPoint++] = y;
+      positions[currPoint++] = z;
+      line.geometry.setDrawRange(0, currPoint / 3);
+      line.geometry.attributes.position.needsUpdate = true;
+
 
     }
 
