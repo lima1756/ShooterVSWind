@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <title>Project</title>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, user-scalable=no, minimum-scale=1.0, maximum-scale=1.0">
+
+</head>
+
+
+<body>
+
+
+
+
+  <script type="module">
+    "using strict";
+    import * as THREE from "https://unpkg.com/three@0.127.0/build/three.module.js";
+    import { OrbitControls } from "https://unpkg.com/three@0.127.0/examples/jsm/controls/OrbitControls.js";
+    import { OBJLoader } from "https://unpkg.com/three@0.127.0/examples/jsm/loaders/OBJLoader.js";
+    import { MTLLoader } from "https://unpkg.com/three@0.127.0/examples/jsm/loaders/MTLLoader.js";
+
+
+    // THREEjs variables
+    let scene, renderer, stats, cameraControls, transfControl, gui, modelMenu;
+    let cameras = []; // perspective, top, fron, side
+
+
+    async function init() {
+      // RENDERER
+      renderer = new THREE.WebGLRenderer({ antialias: true });
+      renderer.setSize(window.innerWidth, window.innerHeight);
+      renderer.setScissorTest(true);
+      document.body.appendChild(renderer.domElement);
+
+      // Camera configuration
+      let fovy = 60.0;    // Field ov view
+      let aspectRatio = window.innerWidth / window.innerHeight;
+      let nearPlane = 0.1;
+      let farPlane = 10000.0;
+
+      // CAMERA 0 Perspective
+      cameras.push(new THREE.PerspectiveCamera(fovy, aspectRatio, nearPlane, farPlane));
+      cameras[0].lookAt(0, 0, 0);
+      cameras[0].position.set(10, 2, 0);
+      cameraControls = new OrbitControls(cameras[0], renderer.domElement);
+      cameraControls.maxPolarAngle = Math.PI / 2 - 0.02
+
+      scene = new THREE.Scene();
+      scene.background = new THREE.Color('white');
+      const light = new THREE.AmbientLight(0x404040, 5);
+      scene.add(light);
+
+      const OBJFile = 'barrel.obj';
+      const MTLFile = 'barrel.mtl';
+      const textureFile = 'barrel.png';
+
+
+      const mtlloader = new MTLLoader();
+      mtlloader.setPath('./textures/');
+      mtlloader.load(MTLFile, (m) => {
+        m.preload();
+
+        const objloader = new OBJLoader();
+        objloader.setMaterials(m);
+        objloader.setPath('./models/');
+        objloader.load(OBJFile, (o) => {
+          const texture = new THREE.TextureLoader().load('textures/barrel.png');
+          console.log(o)
+          // o.children[1].material.map = texture;
+          o.traverse(child => {
+            if (child instanceof THREE.Mesh) {
+              console.log(child)
+              child.material.map = texture;
+              child.material.side = THREE.DoubleSide
+            }
+          })
+          scene.add(o)
+        }, () => { }, (e) => {
+          console.log(e)
+        });
+      }, () => { }, (e) => { console.log(e) });
+
+
+
+
+      renderLoop();
+    }
+
+    function renderLoop(time_now) {
+      drawScene(); // DRAW SCENE
+      updateScene(time_now);
+      requestAnimationFrame(renderLoop);
+    }
+
+    function drawScene() {
+      const w = window.innerWidth;
+      const h = window.innerHeight;
+      if (true) {
+        renderer.setViewport(0, 0, w, h);
+        renderer.setScissor(0, 0, w, h);
+        renderer.render(scene, cameras[0])
+      }
+    }
+
+    function updateScene(time_now) {
+
+    }
+
+    window.addEventListener("resize", () => {
+      const aspect = window.innerWidth / window.innerHeight;
+      cameras.forEach(c => {
+        c.aspect = aspect;
+        c.updateProjectionMatrix()
+      })
+      cameraControls.update();
+      renderer.setSize(window.innerWidth, window.innerHeight);
+    }, false);
+
+    document.addEventListener("DOMContentLoaded", init);
+
+  </script>
+
+
+
+</body>
+
+</html>
