@@ -534,13 +534,21 @@
       }
 
       setInitialPosition(pos) {
-        this.properties.initial_position = pos;
-        this.properties.position = pos;
+        this.properties.initial_position.x = pos.x;
+        this.properties.position.x = pos.x;
+        this.properties.initial_position.y = pos.y;
+        this.properties.position.y = pos.y;
+        this.properties.initial_position.z = pos.z;
+        this.properties.position.z = pos.z;
       }
 
       setInitialVelocity(vel) {
-        this.properties.initial_velocity = vel;
-        this.properties.velocity = vel;
+        this.properties.initial_velocity.x = vel.x;
+        this.properties.velocity.x = vel.x;
+        this.properties.initial_velocity.y = vel.y;
+        this.properties.velocity.y = vel.y;
+        this.properties.initial_velocity.z = vel.z;
+        this.properties.velocity.z = vel.z;
       }
     }
 
@@ -626,7 +634,7 @@
         // Set cannonBalls
         state.cannons.forEach((c) => {
           //TODO check if value of Radius is proper.
-          c.ball = new CannonBall(c.properties.ball_mass, 2.0);
+          c.ball = new CannonBall(c.properties.ball_mass, 0.5);
           c.ball.setInitialPosition(new THREE.Vector3(
             c.barrel.position.x + c.position.x,
             c.barrel.position.y + c.position.y,
@@ -694,12 +702,12 @@
       modelMenu = gui.addFolder("Selected Cannon options")
       // TODO: add all properties that are going to be editable for the future animation, any constants, etc.
       let dummyProperty = modelMenu.add(state.selectedObject.properties, "dummy").min(-10).max(10).name("Dummy");
-      let sliderBallMass = modelMenu.add(state.selectedObject.properties, "ball_mass").min(2).max(90).step(2).setValue(2).name("Mass of Ball").listen().onChange(function (value) {
+      let sliderBallMass = modelMenu.add(state.selectedObject.properties, "ball_mass").min(0.1).max(90.0).step(.1).setValue(2.0).name("Mass of Ball").listen().onChange(function (value) {
       });
       let sliderRotX = modelMenu.add(state.selectedObject.properties, "rotX").min(0).max(90).step(2).setValue(0).name("X (deg)").listen().onChange(function (value) {
         state.selectedObject.barrel.animateRotXQ((-state.selectedObject.properties.rotX - 90) * Math.PI / 180, 0, .35, 0);
       });
-      let sliderInitialSpeed = modelMenu.add(state.selectedObject.properties, "ball_speed").min(0.2).max(20).step(0.2).setValue(1.0).name("Initial Speed").listen().onChange(function (value) {
+      let sliderInitialSpeed = modelMenu.add(state.selectedObject.properties, "ball_speed").min(1).max(250).step(1).setValue(10).name("Initial Speed").listen().onChange(function (value) {
       });
       modelMenu.open()
       cleanInputsStyle();
@@ -785,7 +793,7 @@
       gui.add(state, 'references');
       gui.add(state, 'help');
       const addCannonbtn = gui.add(state, 'addCannon')
-      let sliderAirResistance = gui.add(state, "air_resistance_coefficient_b").min(0.1).max(10).step(0.1).setValue(1.0).name("Air resistance coefficient").listen().onChange(function (value) {
+      let sliderAirResistance = gui.add(state, "air_resistance_coefficient_b").min(0).max(1).step(0.01).setValue(0.1).name("Air resistance coefficient").listen().onChange(function (value) {
 
       });
       addCannonbtn.domElement.parentElement.parentElement.id = "addCannonbtn"
@@ -924,27 +932,45 @@
           v0 = c.ball.properties.initial_velocity;
           s0 = c.ball.properties.initial_position;
           m = c.ball.properties.mass;
-          bm = b / m;
-          mb = m / b;
-          exp = Math.exp(-bm * time);
+          if(b > 0.001){
+            bm = b / m;
+            mb = m / b;
+            exp = Math.exp(-bm * time);
 
-          c.ball.properties.acceleration.x = -bm * v0.x * exp;
-          c.ball.properties.acceleration.y = (-bm * v0.y + g) * exp;
-          c.ball.properties.acceleration.z = -bm * v0.z * exp;
+            c.ball.properties.acceleration.x = -bm * v0.x * exp;
+            c.ball.properties.acceleration.y = (-(bm * v0.y) + g) * exp;
+            c.ball.properties.acceleration.z = -bm * v0.z * exp;
 
-          c.ball.properties.velocity.x = v0.x * exp;
-          c.ball.properties.velocity.y = v0.y * exp + (1 - exp) * (mb * g);
-          c.ball.properties.velocity.z = v0.z * exp;
+            c.ball.properties.velocity.x = v0.x * exp;
+            c.ball.properties.velocity.y = (v0.y * exp) + ((1 - exp) * (mb * g));
+            c.ball.properties.velocity.z = v0.z * exp;
 
-          c.ball.properties.position.x = s0.x + mb * v0.x * (1 - exp);
-          c.ball.properties.position.y = s0.y + (mb * (v0.y - mb * g) * (1 - exp)) + (mb * g * time);
-          c.ball.properties.position.z = s0.z + mb * v0.z * (1 - exp);
+            c.ball.properties.position.x =  (mb * v0.x * (1 - exp));
+            c.ball.properties.position.y =  (mb * (v0.y - mb * g) * (1 - exp)) + (mb * g * time);
+            c.ball.properties.position.z =  (mb * v0.z * (1 - exp));
+          }else{
+            c.ball.properties.acceleration.x = 0;
+            c.ball.properties.acceleration.y = g;
+            c.ball.properties.acceleration.z = 0;
 
-          console.log(c.ball.properties.position,
+            c.ball.properties.velocity.x = v0.x;
+            c.ball.properties.velocity.y = v0.y + (time * g);
+            c.ball.properties.velocity.z = v0.z;
+
+            c.ball.properties.position.x =  (time * v0.x );
+            c.ball.properties.position.y =  (time * v0.y ) + (0.5 * g * time * time);
+            c.ball.properties.position.z =  (time * v0.z );
+          }
+
+          console.log(
+            c.ball.properties.position,
             c.ball.properties.velocity,
-            c.ball.properties.acceleration);
+            c.ball.properties.acceleration
+            );
 
-          c.ball.position.set(c.ball.properties.position);
+          c.ball.position.x = s0.x + c.ball.properties.position.x;
+          c.ball.position.y = s0.y + c.ball.properties.position.y;
+          c.ball.position.z = s0.z + c.ball.properties.position.z;
 
         });
 
