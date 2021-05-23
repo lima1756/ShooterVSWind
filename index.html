@@ -720,12 +720,12 @@
       let sliderAirResistance = modelMenu.add(state.selectedObject.properties, "air_resistance_coefficient_b").min(0).max(1).step(0.01).setValue(0.1).name("Air resistance coefficient").listen().onChange(function (value) {
 
       });
-      let sliderBallMass = modelMenu.add(state.selectedObject.properties, "ball_mass").min(0.1).max(90.0).step(.1).setValue(state.selectedObject.properties.ball_mass).name("Mass of Ball").listen().onChange(function (value) {
+      let sliderBallMass = modelMenu.add(state.selectedObject.properties, "ball_mass").min(0.1).max(10.0).step(.1).setValue(state.selectedObject.properties.ball_mass).name("Mass of Ball").listen().onChange(function (value) {
       });
       let sliderRotX = modelMenu.add(state.selectedObject.properties, "rotX").min(0).max(90).step(.5).setValue(state.selectedObject.properties.rotX).name("X (deg)").listen().onChange(function (value) {
         state.selectedObject.barrel.animateRotXQ((-state.selectedObject.properties.rotX - 90) * Math.PI / 180, 0, .35, 0);
       });
-      let sliderInitialSpeed = modelMenu.add(state.selectedObject.properties, "ball_speed").min(1).max(250).step(1).setValue(state.selectedObject.properties.ball_speed).name("Initial Speed").listen().onChange(function (value) {
+      let sliderInitialSpeed = modelMenu.add(state.selectedObject.properties, "ball_speed").min(1).max(65).step(1).setValue(state.selectedObject.properties.ball_speed).name("Initial Speed").listen().onChange(function (value) {
       });
       modelMenu.open()
       cleanInputsStyle();
