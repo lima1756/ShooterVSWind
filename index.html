@@ -565,6 +565,12 @@
       target: null
     };
 
+    // Camera configuration
+    let fovy = 60.0;    // Field ov view
+    let aspectRatio = window.innerWidth / window.innerHeight;
+    let nearPlane = 0.1;
+    let farPlane = 10000.0;
+
     const map_size = 128;
 
     const MAX_POINTS = 1000000;
@@ -744,12 +750,6 @@
       renderer.setScissorTest(true);
       document.body.appendChild(renderer.domElement);
 
-      // Camera configuration
-      let fovy = 60.0;    // Field ov view
-      let aspectRatio = window.innerWidth / window.innerHeight;
-      let nearPlane = 0.1;
-      let farPlane = 10000.0;
-
       // CAMERA 0 Perspective
       cameras.push(new THREE.PerspectiveCamera(fovy, aspectRatio, nearPlane, farPlane));
       cameras[0].lookAt(0, 0, 0);
@@ -758,20 +758,26 @@
       cameraControls.maxPolarAngle = Math.PI / 2 - 0.02
 
       // CAMERA 1 Top
-      cameras.push(new THREE.PerspectiveCamera(fovy, aspectRatio, nearPlane, farPlane));
-      cameras[1].position.set(0, 30, 0);
+      cameras.push(new THREE.OrthographicCamera(
+        -aspectRatio * map_size / 2, aspectRatio * map_size / 2, map_size / 2, -map_size / 2, -10000, 10000
+      ));
+      cameras[1].position.set(0, map_size, 0);
       cameras[1].lookAt(0, 0, 0);
       cameras[1].up.set(0, 0, 1);
 
       // CAMERA 2 Front
-      cameras.push(new THREE.PerspectiveCamera(fovy, aspectRatio, nearPlane, farPlane));
-      cameras[2].position.set(0, 1, 30);
+      cameras.push(new THREE.OrthographicCamera(
+        -aspectRatio * map_size / 4, aspectRatio * map_size / 4, map_size / 2, -map_size / 2, -10000, 10000
+      ));
+      cameras[2].position.set(0, 1, map_size);
       cameras[2].lookAt(0, 0, 0);
       cameras[2].up.set(0, 1, 0);
 
       // CAMERA 3 Side
-      cameras.push(new THREE.PerspectiveCamera(fovy, aspectRatio, nearPlane, farPlane));
-      cameras[3].position.set(-30, 1, 0);
+      cameras.push(new THREE.OrthographicCamera(
+        -aspectRatio * map_size / 4, aspectRatio * map_size / 4, map_size / 2, -map_size / 2, -10000, 10000
+      ));
+      cameras[3].position.set(-map_size, 1, 0);
       cameras[3].lookAt(0, 0, 0);
       cameras[3].up.set(0, 1, 0);
 
@@ -899,6 +905,9 @@
     function drawScene() {
       const w = window.innerWidth;
       const h = window.innerHeight;
+      const tempCam = new THREE.PerspectiveCamera(fovy, aspectRatio, nearPlane, 1)
+
+
       if (state.editMode) {
         renderer.setViewport(0, 0, w, h);
         renderer.setScissor(0, 0, w, h);
@@ -911,16 +920,31 @@
         // top
         renderer.setViewport(0, h / 2, w / 2, h / 2);
         renderer.setScissor(0, h / 2, w / 2, h / 2);
+        tempCam.position.copy(cameras[1].position)
+        tempCam.lookAt(0, 0, 0);
+        renderer.autoClear = true
+        renderer.render(scene, tempCam)
+        renderer.autoClear = false
         renderer.render(scene, cameras[1])
 
         // front z -> origin
         renderer.setViewport(w / 2, h / 2, w / 2, h / 2);
         renderer.setScissor(w / 2, h / 2, w / 2, h / 2);
+        tempCam.position.copy(cameras[2].position)
+        tempCam.lookAt(0, 0, 0);
+        renderer.autoClear = true
+        renderer.render(scene, tempCam)
+        renderer.autoClear = false
         renderer.render(scene, cameras[2])
 
         // side x -> origin
         renderer.setViewport(0, 0, w / 2, h / 2);
         renderer.setScissor(0, 0, w / 2, h / 2);
+        tempCam.position.copy(cameras[3].position)
+        tempCam.lookAt(0, 0, 0);
+        renderer.autoClear = true
+        renderer.render(scene, tempCam)
+        renderer.autoClear = false
         renderer.render(scene, cameras[3])
 
       }
