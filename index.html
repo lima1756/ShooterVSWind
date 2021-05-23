@@ -445,7 +445,7 @@
 
     class Cannon extends THREE.Group {
 
-      properties = { rotX: 0, ball_speed: 1, ball_mass: 1.0 }
+      properties = { rotX: 0, ball_speed: 1, ball_mass: 1.0, air_resistance_coefficient_b: 1.0 }
 
       constructor() {
         super();
@@ -460,6 +460,7 @@
       }
     }
 
+
     class CannonBall extends THREE.Mesh {
       properties = {
         mass: 0.1,
@@ -468,7 +469,7 @@
         position: new THREE.Vector3(0, 0, 0),
         initial_velocity: new THREE.Vector3(0, 0, 0),
         velocity: new THREE.Vector3(0, 0, 0),
-        acceleration: new THREE.Vector3(0, GRAVITY_ACCELERATION, 0),
+        acceleration: new THREE.Vector3(0, state.gravity, 0),
       }
 
       constructor(mass = 1.0, radius = 1.0) {
@@ -561,8 +562,8 @@
       totalTries: 0,
       transforming: false,
       isAnimationStarted: false,
-      air_resistance_coefficient_b: 1.0,
-      target: null
+      target: null,
+      gravity: 9.81,
     };
 
     // Camera configuration
@@ -582,7 +583,6 @@
     const domFabSecondaryIcon = document.getElementById("fab_secondary_icon")
 
     //Physics variables
-    const GRAVITY_ACCELERATION = -9.81;
     let start_time;
 
     domFabMain.onclick = () => {
@@ -715,8 +715,11 @@
     }
 
     function genModelMenu() {
-      modelMenu = gui.addFolder("Selected Cannon options")
+      modelMenu = gui.addFolder("Selected Cannon options");
       // TODO: add all properties that are going to be editable for the future animation, any constants, etc.
+      let sliderAirResistance = modelMenu.add(state.selectedObject.properties, "air_resistance_coefficient_b").min(0).max(1).step(0.01).setValue(0.1).name("Air resistance coefficient").listen().onChange(function (value) {
+
+      });
       let sliderBallMass = modelMenu.add(state.selectedObject.properties, "ball_mass").min(0.1).max(90.0).step(.1).setValue(state.selectedObject.properties.ball_mass).name("Mass of Ball").listen().onChange(function (value) {
       });
       let sliderRotX = modelMenu.add(state.selectedObject.properties, "rotX").min(0).max(90).step(.5).setValue(state.selectedObject.properties.rotX).name("X (deg)").listen().onChange(function (value) {
@@ -807,10 +810,10 @@
       gui = new dat.GUI();
       gui.add(state, 'references');
       gui.add(state, 'help');
-      const addCannonbtn = gui.add(state, 'addCannon')
-      let sliderAirResistance = gui.add(state, "air_resistance_coefficient_b").min(0).max(1).step(0.01).setValue(0.1).name("Air resistance coefficient").listen().onChange(function (value) {
+      let gravity = gui.add(state, "gravity").min(0).max(50).step(0.1).setValue(9.81).name("Gravity acceleration").listen().onChange(function (value) {
 
       });
+      const addCannonbtn = gui.add(state, 'addCannon');
       addCannonbtn.domElement.parentElement.parentElement.id = "addCannonbtn"
 
       cleanInputsStyle();
@@ -960,16 +963,17 @@
 
         let time = time_now - start_time;
         // TODO: animate cannons and other stuff if required
-        let b = state.air_resistance_coefficient_b;
+        
         state.cannons.forEach(async (c, i) => {
-          let s0, v0, m, exp, g, bm, mb;
-          g = GRAVITY_ACCELERATION;
+          let s0, v0, m, exp, g,b, bm, mb;
+          b = c.properties.air_resistance_coefficient_b;
+          g = -1* state.gravity;
           v0 = c.ball.properties.initial_velocity;
           s0 = c.ball.properties.initial_position;
           m = c.ball.properties.mass;
-          if (c.ball.position.x > map_size / 2 || c.ball.position.x < -map_size / 2
-            || c.ball.position.z > map_size / 2 || c.ball.position.z < -map_size / 2
-            || c.ball.position.y > map_size / 2 || c.ball.position.y < 0) {
+          if ( c.ball.properties.position.x > map_size / 2 || c.ball.properties.position.x < -map_size / 2
+            || c.ball.properties.position.z > map_size / 2 || c.ball.properties.position.z < -map_size / 2
+            || c.ball.properties.position.y > map_size / 2 || c.ball.properties.position.y < 0) {
             return
           }
           if (b > 0.001) {
@@ -1001,6 +1005,13 @@
             c.ball.properties.position.y = (time * v0.y) + (0.5 * g * time * time);
             c.ball.properties.position.z = (time * v0.z);
           }
+
+          c.ball.position.set(
+            s0.x + c.ball.properties.position.x,
+            s0.y + c.ball.properties.position.y,
+            s0.z + c.ball.properties.position.z,
+          );
+
           if (curr_point < MAX_POINTS) {
             const line = state.lines[i];
             const data = line.geometry.attributes.position.array;
@@ -1008,25 +1019,17 @@
             data[curr_point + 1] = s0.y + c.ball.properties.position.y
             data[curr_point + 2] = s0.z + c.ball.properties.position.z
             line.geometry.setDrawRange(0, curr_point / 3 + 1);
-            console.log(data)
             line.geometry.attributes.position.needsUpdate = true;
           }
 
-
-          console.log(
-            c.ball.properties.position,
-            c.ball.properties.velocity,
-            c.ball.properties.acceleration
-          );
-
           if (state.gameMode) {
 
-            if (c.ball.position.x < state.target.position.x + 2
-              && c.ball.position.x > state.target.position.x - 2
-              && c.ball.position.y < (state.target.position.y + 2.45) + 3
-              && c.ball.position.y > (state.target.position.y + 2.45) - 3
-              && c.ball.position.z < state.target.position.z + 2
-              && c.ball.position.z > state.target.position.z - 2) {
+            if (c.ball.properties.position.x < state.target.position.x + 2
+              && c.ball.properties.position.x > state.target.position.x - 2
+              && c.ball.properties.position.y < (state.target.position.y + 2.45) + 3
+              && c.ball.properties.position.y > (state.target.position.y + 2.45) - 3
+              && c.ball.properties.position.z < state.target.position.z + 2
+              && c.ball.properties.position.z > state.target.position.z - 2) {
               alert(`You hit it!\nIt took you ${state.totalTries} attempts`)
               cleanUp()
               domFabMain.onclick();
@@ -1035,9 +1038,9 @@
             }
           }
 
-          c.ball.position.x = s0.x + c.ball.properties.position.x;
-          c.ball.position.y = s0.y + c.ball.properties.position.y;
-          c.ball.position.z = s0.z + c.ball.properties.position.z;
+          c.ball.properties.position.x = s0.x + c.ball.properties.position.x;
+          c.ball.properties.position.y = s0.y + c.ball.properties.position.y;
+          c.ball.properties.position.z = s0.z + c.ball.properties.position.z;
 
         });
         curr_point += 3;
