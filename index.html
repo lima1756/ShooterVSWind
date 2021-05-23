@@ -615,7 +615,7 @@
           ));
 
           let theta = -(c.barrel.rotation.x + Math.PI / 2);
-          let phi = c.rotation.y;
+          let phi =  c.rotation.x === 0 ? c.rotation.y : Math.PI -  c.rotation.y;
 
           c.ball.setInitialVelocity(new THREE.Vector3(
             c.properties.ball_speed * Math.cos(theta) * Math.sin(phi),
