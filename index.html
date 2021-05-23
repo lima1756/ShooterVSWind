@@ -445,7 +445,7 @@
 
     class Cannon extends THREE.Group {
 
-      properties = { rotX: 0, ball_speed: 1, ball_mass: 1.0, air_resistance_coefficient_b: 1.0 }
+      properties = { rotX: 0, ball_speed: 1, ball_mass: 1.0, impact_elastic_coefficient: 1.0,  air_resistance_coefficient_b: 1.0 }
 
       constructor() {
         super();
@@ -460,13 +460,20 @@
       }
     }
 
+    const bounce_states = {
+      START:0,
+      HAS_NOT_BOUNCED:1,
+      HAS_BOUNCED:2,
+    }
 
     class CannonBall extends THREE.Mesh {
       properties = {
+        bounce_status: bounce_states.START,
+        last_time_bounce: 0.0,
         mass: 0.1,
         radius: 1.0,
         initial_position: new THREE.Vector3(0, 0, 0),
-        position: new THREE.Vector3(0, 0, 0),
+        displacement: new THREE.Vector3(0, 0, 0),
         initial_velocity: new THREE.Vector3(0, 0, 0),
         velocity: new THREE.Vector3(0, 0, 0),
         acceleration: new THREE.Vector3(0, state.gravity, 0),
@@ -486,11 +493,11 @@
 
       setInitialPosition(pos) {
         this.properties.initial_position.x = pos.x;
-        this.properties.position.x = pos.x;
+        this.position.x = pos.x;
         this.properties.initial_position.y = pos.y;
-        this.properties.position.y = pos.y;
+        this.position.y = pos.y;
         this.properties.initial_position.z = pos.z;
-        this.properties.position.z = pos.z;
+        this.position.z = pos.z;
       }
 
       setInitialVelocity(vel) {
@@ -721,6 +728,8 @@
 
       });
       let sliderBallMass = modelMenu.add(state.selectedObject.properties, "ball_mass").min(0.1).max(10.0).step(.1).setValue(state.selectedObject.properties.ball_mass).name("Mass of Ball").listen().onChange(function (value) {
+      });
+      let sliderBallElasticCoeff = modelMenu.add(state.selectedObject.properties, "impact_elastic_coefficient").min(0).max(1.0).step(.05).setValue(state.selectedObject.properties.impact_elastic_coefficient).name("Elastic Coefficient of Impact").listen().onChange(function (value) {
       });
       let sliderRotX = modelMenu.add(state.selectedObject.properties, "rotX").min(0).max(90).step(.5).setValue(state.selectedObject.properties.rotX).name("X (deg)").listen().onChange(function (value) {
         state.selectedObject.barrel.animateRotXQ((-state.selectedObject.properties.rotX - 90) * Math.PI / 180, 0, .35, 0);
@@ -965,71 +974,78 @@
         // TODO: animate cannons and other stuff if required
         
         state.cannons.forEach(async (c, i) => {
-          let s0, v0, m, exp, g,b, bm, mb;
+          let s0, v0, m, exp, g,b, bm, mb, exp_bounce, delta_t;
           b = c.properties.air_resistance_coefficient_b;
           g = -1* state.gravity;
           v0 = c.ball.properties.initial_velocity;
           s0 = c.ball.properties.initial_position;
           m = c.ball.properties.mass;
-          if ( c.ball.properties.position.x > map_size / 2 || c.ball.properties.position.x < -map_size / 2
-            || c.ball.properties.position.z > map_size / 2 || c.ball.properties.position.z < -map_size / 2
-            || c.ball.properties.position.y > map_size / 2 || c.ball.properties.position.y < 0) {
+          delta_t = (time - c.ball.properties.last_time_bounce);
+
+          if ( c.ball.position.x > map_size / 2 || c.ball.position.x < -map_size / 2
+            || c.ball.position.z > map_size / 2 || c.ball.position.z < -map_size / 2
+            || c.ball.position.y > map_size / 2 
+            //|| c.ball.position.y < 0
+            ) {
             return
           }
           if (b > 0.001) {
+            // calculations with air resistance.
             bm = b / m;
             mb = m / b;
             exp = Math.exp(-bm * time);
+            exp_bounce = Math.exp(bm * c.ball.properties.last_time_bounce);
 
             c.ball.properties.acceleration.x = -bm * v0.x * exp;
-            c.ball.properties.acceleration.y = (-(bm * v0.y) + g) * exp;
+            c.ball.properties.acceleration.y = (-(bm * v0.y) + g) * exp * exp_bounce;
             c.ball.properties.acceleration.z = -bm * v0.z * exp;
 
             c.ball.properties.velocity.x = v0.x * exp;
-            c.ball.properties.velocity.y = (v0.y * exp) + ((1 - exp) * (mb * g));
+            c.ball.properties.velocity.y = (v0.y * exp * exp_bounce) + ((1 - (exp * exp_bounce)) * (mb * g));
             c.ball.properties.velocity.z = v0.z * exp;
 
-            c.ball.properties.position.x = (mb * v0.x * (1 - exp));
-            c.ball.properties.position.y = (mb * (v0.y - mb * g) * (1 - exp)) + (mb * g * time);
-            c.ball.properties.position.z = (mb * v0.z * (1 - exp));
+            c.ball.properties.displacement.x = (mb * v0.x * (1 - exp));
+            c.ball.properties.displacement.y = (mb * (v0.y - mb * g) * (1 - (exp * exp_bounce))) + (mb * g * delta_t );
+            c.ball.properties.displacement.z = (mb * v0.z * (1 - exp));
           } else {
+            // air resistance deprecated
             c.ball.properties.acceleration.x = 0;
             c.ball.properties.acceleration.y = g;
             c.ball.properties.acceleration.z = 0;
 
             c.ball.properties.velocity.x = v0.x;
-            c.ball.properties.velocity.y = v0.y + (time * g);
+            c.ball.properties.velocity.y = v0.y + (delta_t * g);
             c.ball.properties.velocity.z = v0.z;
 
-            c.ball.properties.position.x = (time * v0.x);
-            c.ball.properties.position.y = (time * v0.y) + (0.5 * g * time * time);
-            c.ball.properties.position.z = (time * v0.z);
+            c.ball.properties.displacement.x = (time * v0.x);
+            c.ball.properties.displacement.y = (delta_t * v0.y) + (0.5 * g * delta_t * delta_t);
+            c.ball.properties.displacement.z = (time * v0.z);
           }
 
           c.ball.position.set(
-            s0.x + c.ball.properties.position.x,
-            s0.y + c.ball.properties.position.y,
-            s0.z + c.ball.properties.position.z,
+            s0.x + c.ball.properties.displacement.x,
+            s0.y + c.ball.properties.displacement.y,
+            s0.z + c.ball.properties.displacement.z,
           );
 
           if (curr_point < MAX_POINTS) {
             const line = state.lines[i];
             const data = line.geometry.attributes.position.array;
-            data[curr_point] = s0.x + c.ball.properties.position.x
-            data[curr_point + 1] = s0.y + c.ball.properties.position.y
-            data[curr_point + 2] = s0.z + c.ball.properties.position.z
+            data[curr_point] =  c.ball.position.x
+            data[curr_point + 1] = c.ball.position.y
+            data[curr_point + 2] = c.ball.position.z
             line.geometry.setDrawRange(0, curr_point / 3 + 1);
             line.geometry.attributes.position.needsUpdate = true;
           }
 
           if (state.gameMode) {
 
-            if (c.ball.properties.position.x < state.target.position.x + 2
-              && c.ball.properties.position.x > state.target.position.x - 2
-              && c.ball.properties.position.y < (state.target.position.y + 2.45) + 3
-              && c.ball.properties.position.y > (state.target.position.y + 2.45) - 3
-              && c.ball.properties.position.z < state.target.position.z + 2
-              && c.ball.properties.position.z > state.target.position.z - 2) {
+            if (c.ball.position.x < state.target.position.x + 2
+              && c.ball.position.x > state.target.position.x - 2
+              && c.ball.position.y < state.target.position.y + 2
+              && c.ball.position.y > state.target.position.y - 2
+              && c.ball.position.z < state.target.position.z + 2
+              && c.ball.position.z > state.target.position.z - 2) {
               alert(`You hit it!\nIt took you ${state.totalTries} attempts`)
               cleanUp()
               domFabMain.onclick();
@@ -1038,9 +1054,22 @@
             }
           }
 
-          c.ball.properties.position.x = s0.x + c.ball.properties.position.x;
-          c.ball.properties.position.y = s0.y + c.ball.properties.position.y;
-          c.ball.properties.position.z = s0.z + c.ball.properties.position.z;
+          c.ball.position.x = s0.x + c.ball.properties.displacement.x;
+          c.ball.position.y = s0.y + c.ball.properties.displacement.y;
+          c.ball.position.z = s0.z + c.ball.properties.displacement.z;
+
+          //bouncing
+          if(c.ball.properties.bounce_status === bounce_states.HAS_NOT_BOUNCED  && Math.abs(c.ball.position.y) < c.ball.properties.radius ){
+            console.log(c.ball.properties.bounce_status, c.ball.position.y, c.ball.properties.radius )
+            c.ball.properties.bounce_status = bounce_states.HAS_BOUNCED;
+            c.ball.properties.last_time_bounce = time;
+            c.ball.properties.initial_velocity.y = -1 * c.properties.impact_elastic_coefficient * c.ball.properties.velocity.y;
+            c.ball.properties.initial_position.y =  c.ball.position.y;
+          }else if(c.ball.properties.bounce_status === bounce_states.HAS_BOUNCED && Math.abs(c.ball.position.y) < c.ball.properties.radius){
+            c.ball.properties.bounce_status = bounce_states.START;
+          }else if( c.ball.properties.bounce_status === bounce_states.START && c.ball.properties.velocity.y < 0){
+            c.ball.properties.bounce_status = bounce_states.HAS_NOT_BOUNCED;
+          }
 
         });
         curr_point += 3;
