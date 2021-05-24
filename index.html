@@ -33,7 +33,7 @@
     <div class="modal-content">
       <h4>Help!</h4>
       <p>Click on <b>"Add a cannon"</b> to add a cannon to the scene</p>
-      <p>You can modify the <b>gravity</b> in the scene using the sclider in the menu</p>
+      <p>You can modify the <b>gravity</b> in the scene using the slider in the menu</p>
       <p>Once you have a cannon in the scene you can <b>select it with left click</b></p>
       <p>If you want to <b>remove a cannon right click on it</b></p>
       <p>After you select a <b>cannon a menu</b> of the cannon will appear</p>
@@ -98,10 +98,9 @@
       <p>Welcome to the game mode!</p>
       <p>The properties of the current game are: </p>
       <ul>
-        <!-- TODO units please despues del span dentro del li plox -->
-        <li>-<b>Gravity:</b> <span id="gravity_info"></span></li>
-        <li>-<b>Air resistance:</b> <span id="air_info"></span></li>
-        <li>-<b>Mass of ball:</b> <span id="mass_info"></span></li>
+        <li>-<b>Gravity (m/s^2):</b> <span id="gravity_info"></span></li>
+        <li>-<b>Air resistance (kg /s):</b> <span id="air_info"></span></li>
+        <li>-<b>Mass of ball (kg):</b> <span id="mass_info"></span></li>
       </ul>
       <p>Hit the barrel in the least amount of attempts, have fun!</p>
     </div>
@@ -568,7 +567,6 @@
         const loader = new THREE.TextureLoader();
         this.material = new THREE.MeshPhongMaterial({
           color: 0xff00ff, side: THREE.DoubleSide,
-          //map: loader.load('./textures/metalDetails.jpg'),side: THREE.DoubleSide
         });
       }
 
@@ -630,6 +628,9 @@
       }
     }
 
+    //Physics Constants
+    const GRAVITY_CONSTANT = 9.81;
+
     // THREEjs variables
     let scene, renderer, stats, cameraControls, transfControl, gui, modelMenu;
     let cameras = []; // perspective, top, fron, side
@@ -659,7 +660,7 @@
       transforming: false,
       isAnimationStarted: false,
       target: null,
-      gravity: 9.81,
+      gravity: GRAVITY_CONSTANT,
     };
 
     // Camera configuration
@@ -667,6 +668,9 @@
     let aspectRatio = window.innerWidth / window.innerHeight;
     let nearPlane = 0.1;
     let farPlane = 10000.0;
+    
+    //Physics variables
+    let start_time;
 
     const map_size = 128;
 
@@ -679,9 +683,6 @@
     const domFabSecondary = document.getElementById("fab_secondary")
     const domFabMainIcon = document.getElementById("fab_main_icon")
     const domFabSecondaryIcon = document.getElementById("fab_secondary_icon")
-
-    //Physics variables
-    let start_time;
 
     domFabMain.onclick = () => {
       state.editMode = !state.editMode
@@ -732,8 +733,6 @@
         }
       }
       else {
-        // TODO if something needs to be stopped/removed/cleaned
-
         state.cannons.forEach((c) => {
           scene.remove(c.ball);
           c.ball = null;
@@ -765,7 +764,7 @@
         scene.remove(state.target)
         state.target = null;
       }
-      state.gravity = 9.81;
+      state.gravity = GRAVITY_CONSTANT;
     }
 
     const setGameMode = async () => {
@@ -1081,18 +1080,17 @@
         let time = time_now - start_time;
 
         state.cannons.forEach(async (c, i) => {
-          let s0, v0, m, exp, g, b, T_drag, exp_bounce, v_term, delta_t;
+          let s0, v0, m, exp, g, b, T_drag, exp_bounce, v_term, t_delta_bounce;
           b = c.properties.air_resistance_coefficient_b;
           g = -1 * state.gravity;
           v0 = c.ball.properties.initial_velocity;
           s0 = c.ball.properties.initial_position;
           m = c.ball.properties.mass;
-          delta_t = (time - c.ball.properties.last_time_bounce);
+          t_delta_bounce = (time - c.ball.properties.last_time_bounce);
 
           if (c.ball.position.x > map_size / 2 || c.ball.position.x < -map_size / 2
             || c.ball.position.z > map_size / 2 || c.ball.position.z < -map_size / 2
             || c.ball.position.y > map_size / 2
-            //|| c.ball.position.y < 0
           ) {
             return
           }
@@ -1112,7 +1110,7 @@
             c.ball.properties.velocity.z = v0.z * exp;
 
             c.ball.properties.displacement.x = (T_drag * v0.x * (1 - exp));
-            c.ball.properties.displacement.y = (T_drag * (v0.y - v_term) * (1 - exp_bounce)) + (v_term * delta_t);
+            c.ball.properties.displacement.y = (T_drag * (v0.y - v_term) * (1 - exp_bounce)) + (v_term * t_delta_bounce);
             c.ball.properties.displacement.z = (T_drag * v0.z * (1 - exp));
           } else {
             // air resistance deprecated
@@ -1121,11 +1119,11 @@
             c.ball.properties.acceleration.z = 0;
 
             c.ball.properties.velocity.x = v0.x;
-            c.ball.properties.velocity.y = v0.y + (delta_t * g);
+            c.ball.properties.velocity.y = v0.y + (t_delta_bounce * g);
             c.ball.properties.velocity.z = v0.z;
 
             c.ball.properties.displacement.x = (time * v0.x);
-            c.ball.properties.displacement.y = (delta_t * v0.y) + (0.5 * g * delta_t * delta_t);
+            c.ball.properties.displacement.y = (t_delta_bounce * v0.y) + (0.5 * g * t_delta_bounce * t_delta_bounce);
             c.ball.properties.displacement.z = (time * v0.z);
           }
 
@@ -1146,8 +1144,6 @@
           }
 
           if (state.gameMode) {
-            console.log("here")
-
             if (c.ball.position.x < state.target.position.x + 2
               && c.ball.position.x > state.target.position.x - 2
               && c.ball.position.y < (state.target.position.y + 2.45) + 3
@@ -1164,7 +1160,6 @@
 
           //bouncing
           if (c.ball.properties.bounce_status === bounce_states.HAS_NOT_BOUNCED && c.ball.position.y < c.ball.properties.radius) {
-            console.log(c.ball.properties.bounce_status, c.ball.position.y, c.ball.properties.radius)
             c.ball.properties.bounce_status = bounce_states.HAS_BOUNCED;
             c.ball.properties.last_time_bounce = time;
             c.ball.properties.initial_velocity.y = -1 * c.properties.impact_elastic_coefficient * c.ball.properties.velocity.y;
