@@ -1129,7 +1129,7 @@
 
           c.ball.position.set(
             s0.x + c.ball.properties.displacement.x,
-            (s0.y + c.ball.properties.displacement.y) > c.ball.properties.radius ? (s0.y + c.ball.properties.displacement.y) : c.ball.properties.radius,
+            (s0.y + c.ball.properties.displacement.y) > c.ball.properties.radius/2 ? (s0.y + c.ball.properties.displacement.y) : c.ball.properties.radius/2,
             s0.z + c.ball.properties.displacement.z,
           );
 
