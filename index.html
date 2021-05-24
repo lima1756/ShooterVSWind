@@ -38,12 +38,12 @@
       <p>If you want to <b>remove a cannon right click on it</b></p>
       <p>After you select a <b>cannon a menu</b> of the cannon will appear</p>
       <ul>
-        <!-- TODO: alex plox -->
-        <li>- Air resistance: </li>
-        <li>- Mass of the ball: </li>
-        <li>- Elastic Coefficient: </li>
-        <li>- Cannon angle: </li>
-        <li>- Initial Speed: </li>
+        <li>- Air resistance (kg/s): Coefficient which represents how much the air slows down the ball due it's velocity.</li>
+        <li>- Mass of the ball (kg): Without air resistance, the mass is not needed for calculations, otherwise it's a key element into the computation. The more massive, the less is affected the ball by the air resistance.</li>
+        <li>- Elastic Coefficient (Not units): This coefficient represents the ratio of the speed of the ball (in y axis) after collisioning the floor. Set 1 for not lose energy in the collision!.</li>
+        <li>- Cannon angle (degrees): Angle of the cannon's barrel respect the floor's plane.</li>
+        <li>- Initial Speed (m/s):  Initial speed of the ball.</li>
+        <li>- Gravity aceleration (m/s^2): Set your own gravity field! Earth's gravity acceleration constant is 9.81m/s^2.</li>
       </ul>
       <p>While you have the <b>cannon selected you can</b>: </p>
       <ul>
@@ -1064,7 +1064,6 @@
         }
 
         let time = time_now - start_time;
-        // TODO: animate cannons and other stuff if required
 
         state.cannons.forEach(async (c, i) => {
           let s0, v0, m, exp, g, b, bm, mb, exp_bounce, delta_t;
