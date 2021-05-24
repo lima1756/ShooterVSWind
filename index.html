@@ -1072,7 +1072,7 @@
         let time = time_now - start_time;
 
         state.cannons.forEach(async (c, i) => {
-          let s0, v0, m, exp, g, b, bm, mb, exp_bounce, delta_t;
+          let s0, v0, m, exp, g, b, T_drag, exp_bounce, v_term, delta_t;
           b = c.properties.air_resistance_coefficient_b;
           g = -1 * state.gravity;
           v0 = c.ball.properties.initial_velocity;
@@ -1089,22 +1089,22 @@
           }
           if (b > 0.001) {
             // calculations with air resistance.
-            bm = b / m;
-            mb = m / b;
-            exp = Math.exp(-bm * time);
-            exp_bounce = Math.exp(bm * c.ball.properties.last_time_bounce);
+            T_drag = m / b;
+            exp = Math.exp(- time  / T_drag);
+            exp_bounce = exp *  Math.exp(c.ball.properties.last_time_bounce / T_drag);
+            v_term = g * T_drag;
 
-            c.ball.properties.acceleration.x = -bm * v0.x * exp;
-            c.ball.properties.acceleration.y = (-(bm * v0.y) + g) * exp * exp_bounce;
-            c.ball.properties.acceleration.z = -bm * v0.z * exp;
+            c.ball.properties.acceleration.x = - v0.x * exp / T_drag;
+            c.ball.properties.acceleration.y = (-(v0.y / T_drag) + g) * exp_bounce;
+            c.ball.properties.acceleration.z = - v0.z * exp / T_drag;
 
             c.ball.properties.velocity.x = v0.x * exp;
-            c.ball.properties.velocity.y = (v0.y * exp * exp_bounce) + ((1 - (exp * exp_bounce)) * (mb * g));
+            c.ball.properties.velocity.y = ((v0.y - v_term) * exp_bounce) +  v_term;
             c.ball.properties.velocity.z = v0.z * exp;
 
-            c.ball.properties.displacement.x = (mb * v0.x * (1 - exp));
-            c.ball.properties.displacement.y = (mb * (v0.y - mb * g) * (1 - (exp * exp_bounce))) + (mb * g * delta_t);
-            c.ball.properties.displacement.z = (mb * v0.z * (1 - exp));
+            c.ball.properties.displacement.x = (T_drag * v0.x * (1 - exp));
+            c.ball.properties.displacement.y = (T_drag * (v0.y - v_term) * (1 - exp_bounce)) + (v_term * delta_t);
+            c.ball.properties.displacement.z = (T_drag * v0.z * (1 - exp));
           } else {
             // air resistance deprecated
             c.ball.properties.acceleration.x = 0;
