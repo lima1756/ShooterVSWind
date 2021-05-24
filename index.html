@@ -661,6 +661,8 @@
     const MAX_POINTS = 1000000;
     let curr_point = 0;
 
+    const line_colors = [0xff0000, 0x00ffff, 0xff00ff, 0x00ff00, 0xffff00, 0x0000ff, 0xdddddd];
+
     const domFabMain = document.getElementById("fab_main")
     const domFabSecondary = document.getElementById("fab_secondary")
     const domFabMainIcon = document.getElementById("fab_main_icon")
@@ -682,9 +684,10 @@
         document.getElementById("gravityField").style.display = "none"
         curr_point = 0;
         // Set cannonBalls
-        state.cannons.forEach((c) => {
+
+        state.cannons.forEach((c, i) => {
           // initializing lines per cannon
-          const material = new THREE.LineBasicMaterial({ color: 0xff0000, linewidth: 20 });
+          const material = new THREE.LineBasicMaterial({ color: line_colors[i%line_colors.length], linewidth: 20 });
           const geometry = new THREE.BufferGeometry();
           const positions = new Float32Array(MAX_POINTS * 3);
           geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
@@ -826,7 +829,7 @@
         let sliderAirResistance = modelMenu.add(state.selectedObject.properties, "air_resistance_coefficient_b").min(0).max(1).step(0.01).setValue(0.1).name("Air resistance coefficient").listen();
         let sliderBallMass = modelMenu.add(state.selectedObject.properties, "ball_mass").min(0.1).max(10.0).step(.1).setValue(state.selectedObject.properties.ball_mass).name("Mass of Ball").listen();
       }
-      let sliderBallElasticCoeff = modelMenu.add(state.selectedObject.properties, "impact_elastic_coefficient").min(0).max(1.0).step(.05).setValue(state.selectedObject.properties.impact_elastic_coefficient).name("Elastic Coefficient of Impact").listen();
+      let sliderBallElasticCoeff = modelMenu.add(state.selectedObject.properties, "impact_elastic_coefficient").min(0).max(1.0).step(.02).setValue(state.selectedObject.properties.impact_elastic_coefficient).name("Elastic Coefficient of Impact").listen();
       let sliderRotX = modelMenu.add(state.selectedObject.properties, "rotX").min(0).max(90).step(.5).setValue(state.selectedObject.properties.rotX).name("Cannon angle").listen().onChange(function (value) {
         state.selectedObject.barrel.animateRotXQ((-state.selectedObject.properties.rotX - 90) * Math.PI / 180, 0, .35, 0);
       });
@@ -1116,7 +1119,7 @@
 
           c.ball.position.set(
             s0.x + c.ball.properties.displacement.x,
-            s0.y + c.ball.properties.displacement.y,
+            (s0.y + c.ball.properties.displacement.y) > c.ball.properties.radius ? (s0.y + c.ball.properties.displacement.y) : c.ball.properties.radius,
             s0.z + c.ball.properties.displacement.z,
           );
 
@@ -1147,18 +1150,14 @@
             }
           }
 
-          c.ball.position.x = s0.x + c.ball.properties.displacement.x;
-          c.ball.position.y = s0.y + c.ball.properties.displacement.y;
-          c.ball.position.z = s0.z + c.ball.properties.displacement.z;
-
           //bouncing
-          if (c.ball.properties.bounce_status === bounce_states.HAS_NOT_BOUNCED && Math.abs(c.ball.position.y) < c.ball.properties.radius) {
+          if (c.ball.properties.bounce_status === bounce_states.HAS_NOT_BOUNCED && c.ball.position.y < c.ball.properties.radius) {
             console.log(c.ball.properties.bounce_status, c.ball.position.y, c.ball.properties.radius)
             c.ball.properties.bounce_status = bounce_states.HAS_BOUNCED;
             c.ball.properties.last_time_bounce = time;
             c.ball.properties.initial_velocity.y = -1 * c.properties.impact_elastic_coefficient * c.ball.properties.velocity.y;
             c.ball.properties.initial_position.y = c.ball.position.y;
-          } else if (c.ball.properties.bounce_status === bounce_states.HAS_BOUNCED && Math.abs(c.ball.position.y) < c.ball.properties.radius) {
+          } else if (c.ball.properties.bounce_status === bounce_states.HAS_BOUNCED && c.ball.position.y < c.ball.properties.radius) {
             c.ball.properties.bounce_status = bounce_states.START;
           } else if (c.ball.properties.bounce_status === bounce_states.START && c.ball.properties.velocity.y < 0) {
             c.ball.properties.bounce_status = bounce_states.HAS_NOT_BOUNCED;
