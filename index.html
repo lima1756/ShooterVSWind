@@ -29,6 +29,73 @@
     </ul>
   </div>
 
+  <div id="help_modal" class="modal modal-fixed-footer">
+    <div class="modal-content">
+      <h4>Help!</h4>
+      <p>Click on <b>"Add a cannon"</b> to add a cannon to the scene</p>
+      <p>You can modify the <b>gravity</b> in the scene using the sclider in the menu</p>
+      <p>Once you have a cannon in the scene you can <b>select it with left click</b></p>
+      <p>If you want to <b>remove a cannon right click on it</b></p>
+      <p>After you select a <b>cannon a menu</b> of the cannon will appear</p>
+      <ul>
+        <li>- Air resistance: </li>
+        <li>- Mass of the ball: </li>
+        <li>- Elastic Coefficient: </li>
+        <li>- Cannon angle: </li>
+        <li>- Initial Speed: </li>
+      </ul>
+      <p>While you have the <b>cannon selected you can</b>: </p>
+      <ul>
+        <li>- Move and rotate it on screen using the arrows that appeared</li>
+        <li>- If you press the <b>R key</b>, you can change to <b>rotation</b> mode</li>
+        <li>- If you press the <b>T key</b>, you can change to <b>translation</b> mode</li>
+        <li>- If you press the <b>C key</b>, it will create an exact <b>replica</b> of the cannon in the same place (you
+          need to move
+          the current cannon to see the copy)</li>
+      </ul>
+      <p>In the bottom right corner you can see <b>play button</b>, if pressed it will start the <b>simulation</b></p>
+      <p>If you hover the mouse over the play button a <b>sub-button</b> will appear, it allows to <b>change the
+          mode</b></p>
+      <ul>
+        <li>- <b>Simulation mode(default)</b>: It allows you to test the different properties of the cannon and the
+          scene and compare it with other cannons</li>
+        <li>- <b>Game mode</b>: It automatically sets a cannon and gives you information of the properties of it and the
+          scene, your objective is to set the other properties to hit the barrel that appeared randomly in the scene
+        </li>
+      </ul>
+    </div>
+    <div class="modal-footer">
+      <a href="#!" class="modal-close waves-effect waves-green btn-flat">Accept</a>
+    </div>
+  </div>
+
+  <div id="references_modal" class="modal modal-fixed-footer">
+    <div class="modal-content">
+      <h4>References</h4>
+      <p><b>Background texture</b>: Yokohama 3 by Humus (http://www.humus.name/index.php?page=Textures)</p>
+    </div>
+    <div class="modal-footer">
+      <a href="#!" class="modal-close waves-effect waves-green btn-flat">Close</a>
+    </div>
+  </div>
+
+  <div id="game_modal" class="modal modal-fixed-footer">
+    <div class="modal-content">
+      <h4>Game instructions</h4>
+      <p>Welcome to the game mode!</p>
+      <p>The properties of the current game are: </p>
+      <ul>
+        <li>-<b>Gravity:</b> <span id="gravity_info"></span></li>
+        <li>-<b>Air resistance:</b> <span id="air_info"></span></li>
+        <li>-<b>Mass of ball:</b> <span id="mass_info"></span></li>
+      </ul>
+      <p>Hit the barrel in the least amount of attempts, have fun!</p>
+    </div>
+    <div class="modal-footer">
+      <a href="#!" class="modal-close waves-effect waves-green btn-flat">Accept</a>
+    </div>
+  </div>
+
 
   <script type="module">
     "using strict";
@@ -445,7 +512,7 @@
 
     class Cannon extends THREE.Group {
 
-      properties = { rotX: 0, ball_speed: 1, ball_mass: 1.0, impact_elastic_coefficient: 1.0,  air_resistance_coefficient_b: 1.0 }
+      properties = { rotX: 0, ball_speed: 1, ball_mass: 1.0, impact_elastic_coefficient: 1.0, air_resistance_coefficient_b: 1.0 }
 
       constructor() {
         super();
@@ -461,9 +528,9 @@
     }
 
     const bounce_states = {
-      START:0,
-      HAS_NOT_BOUNCED:1,
-      HAS_BOUNCED:2,
+      START: 0,
+      HAS_NOT_BOUNCED: 1,
+      HAS_BOUNCED: 2,
     }
 
     class CannonBall extends THREE.Mesh {
@@ -555,8 +622,16 @@
     const raycaster = new THREE.Raycaster();
     const mouse = new THREE.Vector2();
     const state = {
-      references: () => alert(`texture Yokohama 3 by Humus (http://www.humus.name/index.php?page=Textures)`),
-      help: () => alert(`Click on cannons to move or rotate, R key to set rotation mode, T key to set translation mode`),
+      references: () => {
+        console.log(document.getElementById("references_modal"))
+        const instance = M.Modal.getInstance(document.getElementById("references_modal"));
+        instance.open();
+      },
+      help: () => {
+        console.log(document.getElementById("help_modal"))
+        const instance = M.Modal.getInstance(document.getElementById("help_modal"));
+        instance.open();
+      },
       addCannon: () => {
         add(new Cannon())
       },
@@ -594,6 +669,7 @@
 
     domFabMain.onclick = () => {
       state.editMode = !state.editMode
+      state.selectedObject = null;
       if (!state.editMode) {
         domFabMainIcon.innerHTML = "stop"
         domFabSecondary.style.display = "none"
@@ -601,6 +677,7 @@
         removeModelMenu();
         gui.close();
         document.getElementById("addCannonbtn").style.display = "none"
+        document.getElementById("gravityField").style.display = "none"
         curr_point = 0;
         // Set cannonBalls
         state.cannons.forEach((c) => {
@@ -622,7 +699,7 @@
           ));
 
           let theta = -(c.barrel.rotation.x + Math.PI / 2);
-          let phi =  c.rotation.x === 0 ? c.rotation.y : Math.PI -  c.rotation.y;
+          let phi = c.rotation.x === 0 ? c.rotation.y : Math.PI - c.rotation.y;
 
           c.ball.setInitialVelocity(new THREE.Vector3(
             c.properties.ball_speed * Math.cos(theta) * Math.sin(phi),
@@ -653,6 +730,7 @@
         gui.open();
         domFabSecondary.style.display = "inline-block"
         document.getElementById("addCannonbtn").style.display = "block"
+        document.getElementById("gravityField").style.display = "block"
         domFabMainIcon.innerHTML = "play_arrow"
       }
     }
@@ -670,10 +748,17 @@
         scene.remove(state.target)
         state.target = null;
       }
+      state.gravity = 9.81;
     }
 
     const setGameMode = async () => {
+      const gravity = Math.ceil(Math.random() * 25)
+      const resistance = Number(Math.random().toFixed(2));
+      const mass = Math.ceil(Math.random() * 9)
       let cannon = new Cannon();
+      cannon.properties.air_resistance_coefficient_b = resistance;
+      cannon.properties.ball_mass = mass;
+      state.gravity = gravity;
       add(cannon);
 
       transfControl.showX = false
@@ -681,15 +766,26 @@
       transfControl.showZ = false
       transfControl.setMode("rotate")
 
-      const x = Math.ceil(Math.random() * map_size / 2) * (Math.round(Math.random()) ? 1 : -1)
-      const y = Math.floor(Math.random() * map_size / 2 - 10) + 10;
-      const z = Math.ceil(Math.random() * map_size / 2) * (Math.round(Math.random()) ? 1 : -1)
+      document.getElementById("gravityField").style.display = "none"
+      document.getElementById("addCannonbtn").style.display = "none"
+
+      document.getElementById("gravity_info").innerText = gravity
+      document.getElementById("air_info").innerText = resistance
+      document.getElementById("mass_info").innerText = mass
+
+      const instance = M.Modal.getInstance(document.getElementById("game_modal"));
+      instance.open();
+
+      const x = Math.ceil(Math.random() * map_size / 2 - 8) * (Math.round(Math.random()) ? 1 : -1)
+      const y = Math.floor(Math.random() * map_size / 2 - 20) + 10;
+      const z = Math.ceil(Math.random() * map_size / 2 - 8) * (Math.round(Math.random()) ? 1 : -1)
       const target = await new Target().build(x, y, z);
+      // BOUNDING BOX
       // const geometry = new THREE.BoxGeometry(3, 5, 3);
       // const material = new THREE.MeshBasicMaterial({ color: 0x00ff00, wireframe: true });
       // const cube = new THREE.Mesh(geometry, material);
       // cube.position.set(x, y + 2.45, z)
-      // scene.add(cube);
+      scene.add(cube);
       scene.add(target)
       state.target = target;
       state.totalTries = 0
@@ -701,9 +797,9 @@
         cleanUp();
         domFabSecondaryIcon.innerHTML = "gamepad"
         document.getElementById("addCannonbtn").style.display = "block"
+        document.getElementById("gravityField").style.display = "block"
       } else {
         domFabSecondaryIcon.innerHTML = "help_outline"
-        document.getElementById("addCannonbtn").style.display = "none"
         cleanUp();
         setGameMode();
       }
@@ -724,18 +820,15 @@
     function genModelMenu() {
       modelMenu = gui.addFolder("Selected Cannon options");
       // TODO: add all properties that are going to be editable for the future animation, any constants, etc.
-      let sliderAirResistance = modelMenu.add(state.selectedObject.properties, "air_resistance_coefficient_b").min(0).max(1).step(0.01).setValue(0.1).name("Air resistance coefficient").listen().onChange(function (value) {
-
-      });
-      let sliderBallMass = modelMenu.add(state.selectedObject.properties, "ball_mass").min(0.1).max(10.0).step(.1).setValue(state.selectedObject.properties.ball_mass).name("Mass of Ball").listen().onChange(function (value) {
-      });
-      let sliderBallElasticCoeff = modelMenu.add(state.selectedObject.properties, "impact_elastic_coefficient").min(0).max(1.0).step(.05).setValue(state.selectedObject.properties.impact_elastic_coefficient).name("Elastic Coefficient of Impact").listen().onChange(function (value) {
-      });
-      let sliderRotX = modelMenu.add(state.selectedObject.properties, "rotX").min(0).max(90).step(.5).setValue(state.selectedObject.properties.rotX).name("X (deg)").listen().onChange(function (value) {
+      if (!state.gameMode) {
+        let sliderAirResistance = modelMenu.add(state.selectedObject.properties, "air_resistance_coefficient_b").min(0).max(1).step(0.01).setValue(0.1).name("Air resistance coefficient").listen();
+        let sliderBallMass = modelMenu.add(state.selectedObject.properties, "ball_mass").min(0.1).max(10.0).step(.1).setValue(state.selectedObject.properties.ball_mass).name("Mass of Ball").listen();
+      }
+      let sliderBallElasticCoeff = modelMenu.add(state.selectedObject.properties, "impact_elastic_coefficient").min(0).max(1.0).step(.05).setValue(state.selectedObject.properties.impact_elastic_coefficient).name("Elastic Coefficient of Impact").listen();
+      let sliderRotX = modelMenu.add(state.selectedObject.properties, "rotX").min(0).max(90).step(.5).setValue(state.selectedObject.properties.rotX).name("Cannon angle").listen().onChange(function (value) {
         state.selectedObject.barrel.animateRotXQ((-state.selectedObject.properties.rotX - 90) * Math.PI / 180, 0, .35, 0);
       });
-      let sliderInitialSpeed = modelMenu.add(state.selectedObject.properties, "ball_speed").min(1).max(65).step(1).setValue(state.selectedObject.properties.ball_speed).name("Initial Speed").listen().onChange(function (value) {
-      });
+      let sliderInitialSpeed = modelMenu.add(state.selectedObject.properties, "ball_speed").min(1).max(65).step(1).setValue(state.selectedObject.properties.ball_speed).name("Initial Speed").listen();
       modelMenu.open()
       cleanInputsStyle();
     }
@@ -819,12 +912,10 @@
       gui = new dat.GUI();
       gui.add(state, 'references');
       gui.add(state, 'help');
-      let gravity = gui.add(state, "gravity").min(0).max(50).step(0.1).setValue(9.81).name("Gravity acceleration").listen().onChange(function (value) {
-
-      });
+      const gravity = gui.add(state, "gravity").min(0).max(50).step(0.1).setValue(9.81).name("Gravity acceleration").listen();
       const addCannonbtn = gui.add(state, 'addCannon');
       addCannonbtn.domElement.parentElement.parentElement.id = "addCannonbtn"
-
+      gravity.domElement.parentElement.parentElement.id = "gravityField"
       cleanInputsStyle();
 
 
@@ -972,21 +1063,21 @@
 
         let time = time_now - start_time;
         // TODO: animate cannons and other stuff if required
-        
+
         state.cannons.forEach(async (c, i) => {
-          let s0, v0, m, exp, g,b, bm, mb, exp_bounce, delta_t;
+          let s0, v0, m, exp, g, b, bm, mb, exp_bounce, delta_t;
           b = c.properties.air_resistance_coefficient_b;
-          g = -1* state.gravity;
+          g = -1 * state.gravity;
           v0 = c.ball.properties.initial_velocity;
           s0 = c.ball.properties.initial_position;
           m = c.ball.properties.mass;
           delta_t = (time - c.ball.properties.last_time_bounce);
 
-          if ( c.ball.position.x > map_size / 2 || c.ball.position.x < -map_size / 2
+          if (c.ball.position.x > map_size / 2 || c.ball.position.x < -map_size / 2
             || c.ball.position.z > map_size / 2 || c.ball.position.z < -map_size / 2
-            || c.ball.position.y > map_size / 2 
+            || c.ball.position.y > map_size / 2
             //|| c.ball.position.y < 0
-            ) {
+          ) {
             return
           }
           if (b > 0.001) {
@@ -1005,7 +1096,7 @@
             c.ball.properties.velocity.z = v0.z * exp;
 
             c.ball.properties.displacement.x = (mb * v0.x * (1 - exp));
-            c.ball.properties.displacement.y = (mb * (v0.y - mb * g) * (1 - (exp * exp_bounce))) + (mb * g * delta_t );
+            c.ball.properties.displacement.y = (mb * (v0.y - mb * g) * (1 - (exp * exp_bounce))) + (mb * g * delta_t);
             c.ball.properties.displacement.z = (mb * v0.z * (1 - exp));
           } else {
             // air resistance deprecated
@@ -1031,7 +1122,7 @@
           if (curr_point < MAX_POINTS) {
             const line = state.lines[i];
             const data = line.geometry.attributes.position.array;
-            data[curr_point] =  c.ball.position.x
+            data[curr_point] = c.ball.position.x
             data[curr_point + 1] = c.ball.position.y
             data[curr_point + 2] = c.ball.position.z
             line.geometry.setDrawRange(0, curr_point / 3 + 1);
@@ -1039,11 +1130,12 @@
           }
 
           if (state.gameMode) {
+            console.log("here")
 
             if (c.ball.position.x < state.target.position.x + 2
               && c.ball.position.x > state.target.position.x - 2
-              && c.ball.position.y < state.target.position.y + 2
-              && c.ball.position.y > state.target.position.y - 2
+              && c.ball.position.y < (state.target.position.y + 2.45) + 3
+              && c.ball.position.y > (state.target.position.y + 2.45) - 3
               && c.ball.position.z < state.target.position.z + 2
               && c.ball.position.z > state.target.position.z - 2) {
               alert(`You hit it!\nIt took you ${state.totalTries} attempts`)
@@ -1059,15 +1151,15 @@
           c.ball.position.z = s0.z + c.ball.properties.displacement.z;
 
           //bouncing
-          if(c.ball.properties.bounce_status === bounce_states.HAS_NOT_BOUNCED  && Math.abs(c.ball.position.y) < c.ball.properties.radius ){
-            console.log(c.ball.properties.bounce_status, c.ball.position.y, c.ball.properties.radius )
+          if (c.ball.properties.bounce_status === bounce_states.HAS_NOT_BOUNCED && Math.abs(c.ball.position.y) < c.ball.properties.radius) {
+            console.log(c.ball.properties.bounce_status, c.ball.position.y, c.ball.properties.radius)
             c.ball.properties.bounce_status = bounce_states.HAS_BOUNCED;
             c.ball.properties.last_time_bounce = time;
             c.ball.properties.initial_velocity.y = -1 * c.properties.impact_elastic_coefficient * c.ball.properties.velocity.y;
-            c.ball.properties.initial_position.y =  c.ball.position.y;
-          }else if(c.ball.properties.bounce_status === bounce_states.HAS_BOUNCED && Math.abs(c.ball.position.y) < c.ball.properties.radius){
+            c.ball.properties.initial_position.y = c.ball.position.y;
+          } else if (c.ball.properties.bounce_status === bounce_states.HAS_BOUNCED && Math.abs(c.ball.position.y) < c.ball.properties.radius) {
             c.ball.properties.bounce_status = bounce_states.START;
-          }else if( c.ball.properties.bounce_status === bounce_states.START && c.ball.properties.velocity.y < 0){
+          } else if (c.ball.properties.bounce_status === bounce_states.START && c.ball.properties.velocity.y < 0) {
             c.ball.properties.bounce_status = bounce_states.HAS_NOT_BOUNCED;
           }
 
@@ -1111,6 +1203,22 @@
           transfControl.showZ = true
           transfControl.setMode("translate")
           break;
+        case "KeyC":
+          if (state.selectedObject) {
+            let sel = state.selectedObject;
+            let cannon = new Cannon()
+            cannon.properties.air_resistance_coefficient_b = sel.properties.air_resistance_coefficient_b;
+            cannon.properties.ball_mass = sel.properties.ball_mass
+            cannon.properties.ball_speed = sel.properties.ball_speed
+            cannon.properties.impact_elastic_coefficient = sel.properties.impact_elastic_coefficient
+            cannon.properties.rotX = sel.properties.rotX
+            cannon.barrel.animateRotXQ((-state.selectedObject.properties.rotX - 90) * Math.PI / 180, 0, .35, 0);
+            cannon.position.x = sel.position.x
+            cannon.position.y = sel.position.y
+            cannon.position.z = sel.position.z
+            add(cannon);
+          }
+          break;
       }
     })
   </script>
@@ -1122,6 +1230,12 @@
       var elems = document.querySelectorAll('.fixed-action-btn');
       var instances = M.FloatingActionButton.init(elems, {});
     });
+
+    document.addEventListener('DOMContentLoaded', function () {
+      var elems = document.querySelectorAll('.modal');
+      var instances = M.Modal.init(elems);
+    });
+
   </script>
 </body>
 
