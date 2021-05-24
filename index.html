@@ -914,7 +914,7 @@
       gui = new dat.GUI();
       gui.add(state, 'references');
       gui.add(state, 'help');
-      const gravity = gui.add(state, "gravity").min(0).max(50).step(0.1).setValue(9.81).name("Gravity acceleration").listen();
+      const gravity = gui.add(state, "gravity").min(0).max(50).step(0.1).setValue(state.gravity).name("Gravity acceleration").listen();
       const addCannonbtn = gui.add(state, 'addCannon');
       addCannonbtn.domElement.parentElement.parentElement.id = "addCannonbtn"
       gravity.domElement.parentElement.parentElement.id = "gravityField"
