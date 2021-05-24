@@ -38,12 +38,16 @@
       <p>If you want to <b>remove a cannon right click on it</b></p>
       <p>After you select a <b>cannon a menu</b> of the cannon will appear</p>
       <ul>
-        <li>- Air resistance (kg/s): Coefficient which represents how much the air slows down the ball due it's velocity.</li>
-        <li>- Mass of the ball (kg): Without air resistance, the mass is not needed for calculations, otherwise it's a key element into the computation. The more massive, the less is affected the ball by the air resistance.</li>
-        <li>- Elastic Coefficient (Not units): This coefficient represents the ratio of the speed of the ball (in y axis) after collisioning the floor. Set 1 for not lose energy in the collision!.</li>
+        <li>- Air resistance (kg/s): Coefficient which represents how much the air slows down the ball due it's
+          velocity.</li>
+        <li>- Mass of the ball (kg): Without air resistance, the mass is not needed for calculations, otherwise it's a
+          key element into the computation. The more massive, the less is affected the ball by the air resistance.</li>
+        <li>- Elastic Coefficient (Not units): This coefficient represents the ratio of the speed of the ball (in y
+          axis) after collisioning the floor. Set 1 for not lose energy in the collision!.</li>
         <li>- Cannon angle (degrees): Angle of the cannon's barrel respect the floor's plane.</li>
-        <li>- Initial Speed (m/s):  Initial speed of the ball.</li>
-        <li>- Gravity aceleration (m/s^2): Set your own gravity field! Earth's gravity acceleration constant is 9.81m/s^2.</li>
+        <li>- Initial Speed (m/s): Initial speed of the ball.</li>
+        <li>- Gravity aceleration (m/s^2): Set your own gravity field! Earth's gravity acceleration constant is
+          9.81m/s^2.</li>
       </ul>
       <p>While you have the <b>cannon selected you can</b>: </p>
       <ul>
@@ -73,10 +77,14 @@
   <div id="references_modal" class="modal modal-fixed-footer">
     <div class="modal-content">
       <h4>References</h4>
-      <p><b>Background texture</b>: <a href="http://www.humus.name/index.php?page=Textures">Yokohama 3 by Humus</a></p>      
-      <p><b>Cannon texture</b>: <a href="https://lostandtaken.com/downloads/scratched-scraped-metal-texture-12/">Scratched And Scraped Metal Texture by Lost & Taken</a></p>
-      <p><b>Cannon wheel texture</b>: <a href="https://www.rgbstock.de/photo/n8BF7A2/Rock+texture">Rock texture by Christine Landis</a></p>
-      <p><b>Barrel model</b>: <a href="https://www.turbosquid.com/es/3d-models/cannon-low-poly-3d-model-1713475">by Derdaryen</a></p>
+      <p><b>Background texture</b>: <a href="http://www.humus.name/index.php?page=Textures">Yokohama 3 by Humus</a></p>
+      <p><b>Cannon texture</b>: <a
+          href="https://lostandtaken.com/downloads/scratched-scraped-metal-texture-12/">Scratched And Scraped Metal
+          Texture by Lost & Taken</a></p>
+      <p><b>Cannon wheel texture</b>: <a href="https://www.rgbstock.de/photo/n8BF7A2/Rock+texture">Rock texture by
+          Christine Landis</a></p>
+      <p><b>Barrel model</b>: <a href="https://www.turbosquid.com/es/3d-models/cannon-low-poly-3d-model-1713475">by
+          Derdaryen</a></p>
       <!-- TODO: referencias plox -->
     </div>
     <div class="modal-footer">
@@ -90,6 +98,7 @@
       <p>Welcome to the game mode!</p>
       <p>The properties of the current game are: </p>
       <ul>
+        <!-- TODO units please despues del span dentro del li plox -->
         <li>-<b>Gravity:</b> <span id="gravity_info"></span></li>
         <li>-<b>Air resistance:</b> <span id="air_info"></span></li>
         <li>-<b>Mass of ball:</b> <span id="mass_info"></span></li>
@@ -282,7 +291,7 @@
         this.geometry = new THREE.CylinderGeometry(0.4, 0.4, 1.5, 64,
           1, true);
         const loader = new THREE.TextureLoader();
-        this.material = new THREE.MeshBasicMaterial({
+        this.material = new THREE.MeshPhongMaterial({
           map: loader.load('./textures/metal.jpg'), side: THREE.DoubleSide
         });
         //this.material = new THREE.MeshBasicMaterial({color: "#485555", side: THREE.DoubleSide});
@@ -297,7 +306,7 @@
         this.father = father;
         this.geometry = new THREE.SphereGeometry(0.43, 32, 32);
         const loader = new THREE.TextureLoader();
-        this.material = new THREE.MeshBasicMaterial({
+        this.material = new THREE.MeshPhongMaterial({
           map: loader.load('./textures/metal.jpg'), side: THREE.DoubleSide
         });
         //this.material = new THREE.MeshBasicMaterial({color: "#485555", side: THREE.DoubleSide});
@@ -312,7 +321,7 @@
         this.father = father;
         this.geometry = new THREE.TorusGeometry(0.4, 0.08, 30, 100);
         const loader = new THREE.TextureLoader();
-        this.material = new THREE.MeshBasicMaterial({
+        this.material = new THREE.MeshPhongMaterial({
           map: loader.load('./textures/metalDetails.jpg'), side: THREE.DoubleSide
         });
         //this.material = new THREE.MeshBasicMaterial({color: "#646868", side: THREE.DoubleSide});
@@ -374,7 +383,7 @@
         this.father = father;
         this.geometry = new THREE.BoxGeometry(1, 1, 1);
         const loader = new THREE.TextureLoader();
-        this.material = new THREE.MeshBasicMaterial({
+        this.material = new THREE.MeshPhongMaterial({
           map: loader.load('./textures/woodPlank.jpg'),
         });
         //this.material = new THREE.MeshBasicMaterial({color: "#664230", side: THREE.DoubleSide});
@@ -392,7 +401,7 @@
         this.geometry = new THREE.CylinderGeometry(0.5, 0.5, .1, 64,
           1, false);
         const loader = new THREE.TextureLoader();
-        this.material = new THREE.MeshBasicMaterial({
+        this.material = new THREE.MeshPhongMaterial({
           map: loader.load('./textures/rock.jpg'), side: THREE.DoubleSide
         });
         //this.material = new THREE.MeshBasicMaterial({color: "#485555", side: THREE.DoubleSide});
@@ -409,7 +418,7 @@
         this.geometry = new THREE.CylinderGeometry(0.5, 0.5, .1, 64,
           1, false);
         const loader = new THREE.TextureLoader();
-        this.material = new THREE.MeshBasicMaterial({
+        this.material = new THREE.MeshPhongMaterial({
           map: loader.load('./textures/metalDetails.jpg'), side: THREE.DoubleSide
         });
         //this.material = new THREE.MeshBasicMaterial({color: "#363939", side: THREE.DoubleSide});
@@ -557,7 +566,7 @@
         this.properties.radius = radius;
         this.geometry = new THREE.SphereGeometry(radius, 32, 32);
         const loader = new THREE.TextureLoader();
-        this.material = new THREE.MeshBasicMaterial({
+        this.material = new THREE.MeshPhongMaterial({
           color: 0xff00ff, side: THREE.DoubleSide,
           //map: loader.load('./textures/metalDetails.jpg'),side: THREE.DoubleSide
         });
@@ -690,7 +699,7 @@
 
         state.cannons.forEach((c, i) => {
           // initializing lines per cannon
-          const material = new THREE.LineBasicMaterial({ color: line_colors[i%line_colors.length], linewidth: 20 });
+          const material = new THREE.LineBasicMaterial({ color: line_colors[i % line_colors.length], linewidth: 20 });
           const geometry = new THREE.BufferGeometry();
           const positions = new Float32Array(MAX_POINTS * 3);
           geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
@@ -793,7 +802,7 @@
       // const material = new THREE.MeshBasicMaterial({ color: 0x00ff00, wireframe: true });
       // const cube = new THREE.Mesh(geometry, material);
       // cube.position.set(x, y + 2.45, z)
-      scene.add(cube);
+      // scene.add(cube);
       scene.add(target)
       state.target = target;
       state.totalTries = 0
